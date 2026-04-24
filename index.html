@@ -67,10 +67,11 @@ const QUESTIONS = [
 ];
 
 const ROOMS = [
-  { id: "little", name: "Little", cost: 100, color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.25)", bots: 9, icon: "🌱", desc: "Para empezar" },
-  { id: "medium", name: "Medium", cost: 300, color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.25)", bots: 13, icon: "⚡", desc: "Nivel medio" },
-  { id: "prime", name: "Prime", cost: 500, color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.25)", bots: 17, icon: "👑", desc: "Para expertos" },
-  { id: "vip", name: "VIP", cost: 2000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.25)", bots: 23, icon: "💎", desc: "Élite total" },
+  { id: "starter", name: "Starter", cost: 200, color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.25)", bots: 9, icon: "🌱", desc: "Para empezar" },
+  { id: "medium", name: "Medium", cost: 500, color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.25)", bots: 13, icon: "⚡", desc: "Nivel medio" },
+  { id: "prime", name: "Prime", cost: 2000, color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.25)", bots: 17, icon: "👑", desc: "Para expertos" },
+  { id: "vip", name: "VIP", cost: 5000, color: "#f97316", glow: "0 0 30px rgba(249,115,22,0.25)", bots: 21, icon: "💎", desc: "Jugadores serios" },
+  { id: "elite", name: "Elite", cost: 10000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.25)", bots: 25, icon: "💠", desc: "Élite total" },
 ];
 
 const CSS = `
@@ -272,13 +273,24 @@ function App() {
     const all = [...botsRef.current.map(b => b.vote), pv];
     const cA = all.filter(v => v === "a").length;
     const cB = all.filter(v => v === "b").length;
+    const tot = all.length;
     let minority = "tie";
     if (cA < cB) minority = "a"; else if (cB < cA) minority = "b";
     let delta = 0, win = false, tie = minority === "tie";
-    if (!tie) {
-      const minC = Math.min(cA, cB), majC = Math.max(cA, cB);
-      if (pv === minority) { win = true; delta = Math.floor(r.cost * (majC / minC)); }
-      else delta = -r.cost;
+    if (tie) {
+      // Empate: se devuelve todo, casa no cobra nada
+      delta = 0;
+    } else {
+      const minC = minority === "a" ? cA : cB;
+      const totalPot = tot * r.cost;
+      const houseCut = Math.floor(totalPot * 0.10);
+      const prizePool = totalPot - houseCut;
+      if (pv === minority) {
+        win = true;
+        delta = Math.floor(prizePool / minC) - r.cost;
+      } else {
+        delta = -r.cost;
+      }
     }
     const newTok = Math.max(0, tokRef.current + delta);
     saveTok(newTok);
