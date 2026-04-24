@@ -270,6 +270,42 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 /* COIN GLOW ON WIN */
 @keyframes coin-glow{0%,100%{filter:drop-shadow(0 0 0px #fbbf24)}50%{filter:drop-shadow(0 0 8px #fbbf24)}}
 .coin-glow img{animation:coin-glow 1s ease infinite}
+/* TOURNAMENTS */
+.tourn{min-height:100vh;padding:28px 24px}
+.tourn-list{display:flex;flex-direction:column;gap:14px;max-width:700px;margin:0 auto}
+.tourn-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:24px;transition:all .2s}
+.tourn-card:hover{border-color:rgba(251,191,36,.3)}
+.tourn-title{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;color:#fff;margin-bottom:8px}
+.tourn-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.tourn-badge{font-size:.72rem;font-weight:700;letter-spacing:.1em;padding:4px 10px;border-radius:20px;text-transform:uppercase}
+.tourn-badge.date{background:rgba(96,165,250,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.25)}
+.tourn-badge.prize{background:rgba(74,222,128,.12);color:#4ade80;border:1px solid rgba(74,222,128,.25)}
+.tourn-badge.entry{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
+.tourn-badge.players{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1)}
+.tourn-tz{font-size:.78rem;color:rgba(255,255,255,.3);margin-bottom:14px}
+.tz-select{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:.82rem;outline:none;cursor:pointer}
+.tourn-btn{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:10px;padding:12px 24px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;letter-spacing:.1em;transition:opacity .2s}
+.tourn-btn:hover{opacity:.88}
+.tourn-btn.joined{background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:#4ade80;cursor:default}
+.tourn-btn.joined:hover{opacity:1}
+.tourn-empty{text-align:center;padding:60px 20px;color:rgba(255,255,255,.2);font-size:.9rem}
+/* NOTIFICATIONS */
+.notif-dot{width:8px;height:8px;background:#f87171;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.notif-panel{position:fixed;top:70px;right:20px;width:320px;background:#0d0d18;border:1px solid rgba(255,255,255,.1);border-radius:16px;z-index:9000;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.notif-hdr{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.15em}
+.notif-item{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
+.notif-item:hover{background:rgba(255,255,255,.04)}
+.notif-item-title{font-size:.85rem;font-weight:700;color:#fff;margin-bottom:3px}
+.notif-item-sub{font-size:.75rem;color:rgba(255,255,255,.3);font-weight:500}
+.notif-item.unread .notif-item-title{color:#fbbf24}
+/* REFERRAL */
+.ref-box{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18);border-radius:14px;padding:20px;max-width:800px;margin-bottom:24px}
+.ref-title{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.2em;margin-bottom:12px}
+.ref-link{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ref-code{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;font-family:'Orbitron',sans-serif;font-size:.8rem;color:#fbbf24;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref-copy{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:8px;padding:10px 18px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.ref-info{font-size:.8rem;color:rgba(255,255,255,.35);margin-top:10px;line-height:1.6}
 /* VICTORY ANIMATION */
 @keyframes win-pop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
 @keyframes confetti-fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(80px) rotate(720deg);opacity:0}}
@@ -342,6 +378,18 @@ function App() {
   const [ranking, setRanking] = useState([]);
   // Vote flash
   const [voteFlash, setVoteFlash] = useState(null);
+  // Tournaments
+  const [tournaments, setTournaments] = useState([]);
+  const [myEntries, setMyEntries] = useState([]);
+  const [tz, setTz] = useState("Europe/Madrid");
+  // Notifications
+  const [showNotif, setShowNotif] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotif, setUnreadNotif] = useState(false);
+  // Referral
+  const [refCode, setRefCode] = useState("");
+  const [refCopied, setRefCopied] = useState(false);
+  const [regRefCode, setRegRefCode] = useState("");
   // Room stats (players + timer per room)
   const [roomStats, setRoomStats] = useState({});
   const roomStatsRef = useRef(null);
@@ -422,6 +470,91 @@ function App() {
     setScreen("ranking");
   }
 
+  // ── TOURNAMENTS / REFERRAL / NOTIFICATIONS ───────────────────────────────
+  async function loadTournaments() {
+    const data = await dbGet("tournaments", "order=starts_at.asc", KEY);
+    const tourns = Array.isArray(data) ? data : [];
+    setTournaments(tourns);
+    if (userIdRef.current) {
+      const entries = await dbGet("tournament_entries", `user_id=eq.${userIdRef.current}`, tokenRef.current);
+      setMyEntries(Array.isArray(entries) ? entries.map(e => e.tournament_id) : []);
+    }
+    buildNotifications(tourns);
+    setScreen("tournaments");
+  }
+
+  async function joinTournament(t) {
+    if (tokRef.current < t.entry_cost) return;
+    await dbInsertRaw("tournament_entries", { tournament_id: t.id, user_id: userIdRef.current }, tokenRef.current);
+    await saveTok(tokRef.current - t.entry_cost);
+    setMyEntries(prev => [...prev, t.id]);
+    soundBonus();
+  }
+
+  function buildNotifications(tourns) {
+    const notifs = [];
+    tourns.forEach(t => {
+      const diff = new Date(t.starts_at) - Date.now();
+      const hours = Math.floor(diff / 3600000);
+      if (diff > 0 && hours < 48) {
+        notifs.push({ id: t.id, title: `🏆 ${t.title}`, sub: `Empieza en ${hours < 1 ? "menos de 1h" : hours + "h"} · Premio: ${t.prize?.toLocaleString()} tokens`, unread: true });
+      }
+    });
+    notifs.push({ id: "bonus", title: "🎁 Bonus diario disponible", sub: "Entra cada día para conseguir tokens gratis", unread: false });
+    setNotifications(notifs);
+    setUnreadNotif(notifs.some(n => n.unread));
+  }
+
+  async function loadProfile() {
+    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&order=created_at.desc&limit=20`, tokenRef.current);
+    setHistory(Array.isArray(hist) ? hist : []);
+    const prof = await dbGet("profiles", `id=eq.${userIdRef.current}`, tokenRef.current);
+    if (prof && prof[0]) setRefCode(prof[0].referral_code || "");
+    setScreen("profile");
+  }
+
+  function copyRefLink() {
+    const link = `${window.location.origin}?ref=${refCode}`;
+    navigator.clipboard?.writeText(link).catch(() => {});
+    setRefCopied(true);
+    setTimeout(() => setRefCopied(false), 2000);
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) { setRegRefCode(ref); localStorage.setItem("mm_ref", ref); }
+    else { const stored = localStorage.getItem("mm_ref"); if (stored) setRegRefCode(stored); }
+  }, []);
+
+  async function applyReferral(newUserId) {
+    const code = regRefCode || localStorage.getItem("mm_ref");
+    if (!code) return;
+    const referrers = await dbGet("profiles", `referral_code=eq.${code}&select=id,tokens`, KEY);
+    if (!referrers || !referrers[0] || referrers[0].id === newUserId) return;
+    const referrerId = referrers[0].id;
+    await dbInsertRaw("referrals", { referrer_id: referrerId, referred_id: newUserId, bonus_paid: true }, KEY);
+    await dbUpdate("profiles", `id=eq.${referrerId}`, { tokens: (referrers[0].tokens || 0) + 500 }, KEY);
+    localStorage.removeItem("mm_ref");
+  }
+
+  const TIMEZONES = [
+    { label: "España (CET)", tz: "Europe/Madrid" },
+    { label: "UK (GMT)", tz: "Europe/London" },
+    { label: "Nueva York (ET)", tz: "America/New_York" },
+    { label: "México (CT)", tz: "America/Mexico_City" },
+    { label: "Buenos Aires (ART)", tz: "America/Argentina/Buenos_Aires" },
+    { label: "Bogotá (COT)", tz: "America/Bogota" },
+    { label: "Dubai (GST)", tz: "Asia/Dubai" },
+    { label: "Tokio (JST)", tz: "Asia/Tokyo" },
+  ];
+
+  function formatTZ(isoDate, tzName) {
+    try {
+      return new Date(isoDate).toLocaleString("es-ES", { timeZone: tzName, day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" });
+    } catch(e) { return isoDate; }
+  }
+
   // ── AUTH ──────────────────────────────────────────────────────────────────
   async function doRegister() {
     setErr(""); setMsg("");
@@ -436,11 +569,12 @@ function App() {
       if (data.access_token) {
         tokenRef.current = data.access_token;
         userIdRef.current = data.user.id;
-        await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: 1000 }, data.access_token);
-        tokRef.current = 1000;
+        await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: regRefCode ? 1500 : 1000 }, data.access_token);
+        tokRef.current = regRefCode ? 1500 : 1000;
         setEmail(email);
-        setUser({ name, tokens: 1000 });
+        setUser({ name, tokens: regRefCode ? 1500 : 1000 });
         setShowWelcome(true);
+        applyReferral(data.user.id);
         setScreen("lobby");
       } else {
         setMsg("✅ Revisa tu correo para confirmar la cuenta");
@@ -755,7 +889,13 @@ function App() {
                 <input type="password" placeholder="••••••••" value={form.pw}
                   onChange={e => setForm(f => ({ ...f, pw: e.target.value }))} />
               </div>
-              <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
+              {mode === "register" && (
+                <div className="field">
+                  <label>Código de invitación <span style={{color:"rgba(255,255,255,.25)",fontWeight:400}}>(opcional)</span></label>
+                  <input type="text" placeholder="Código de amigo..." value={regRefCode}
+                    onChange={e => setRegRefCode(e.target.value)} />
+                </div>
+              )}
                 {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 1000 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
               </button>
             </div>
@@ -775,11 +915,27 @@ function App() {
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
               <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
-              <button className="ghost-btn" onClick={loadRanking}>🏆 Ranking</button>
-              <button className="ghost-btn" onClick={loadProfile}>👤 Mi perfil</button>
+              <button className="ghost-btn" onClick={() => { loadTournaments(); }}>🏆 Torneos</button>
+              <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
+                🔔{unreadNotif && <span className="notif-dot"></span>}
+              </button>
+              <button className="ghost-btn" onClick={loadRanking}>📊 Ranking</button>
+              <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
             </div>
           </div>
+          {showNotif && (
+            <div className="notif-panel">
+              <div className="notif-hdr">NOTIFICACIONES</div>
+              {notifications.length === 0 && <div style={{padding:"20px",color:"rgba(255,255,255,.25)",fontSize:".85rem",textAlign:"center"}}>Sin notificaciones</div>}
+              {notifications.map(n => (
+                <div key={n.id} className={`notif-item${n.unread?" unread":""}`} onClick={() => { setShowNotif(false); if(n.id !== "bonus") loadTournaments(); }}>
+                  <div className="notif-item-title">{n.title}</div>
+                  <div className="notif-item-sub">{n.sub}</div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="lobby-hero">
             <div className="lobby-title">ELIGE TU SALA</div>
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
@@ -1031,6 +1187,19 @@ function App() {
             ))}
           </div>
 
+          {/* Referral */}
+          <div className="ref-box">
+            <div className="ref-title">INVITA AMIGOS · GANA TOKENS</div>
+            <div className="ref-link">
+              <div className="ref-code">{window.location.origin}?ref={refCode}</div>
+              <button className="ref-copy" onClick={copyRefLink}>{refCopied ? "✅ COPIADO" : "COPIAR LINK"}</button>
+            </div>
+            <div className="ref-info">
+              Tu amigo recibe <strong style={{color:"#fbbf24"}}>+500 tokens extra</strong> al registrarse (1.500 total).<br/>
+              Tú recibes <strong style={{color:"#4ade80"}}>+500 tokens</strong> cuando se registre.
+            </div>
+          </div>
+
           {/* Change password */}
           <div className="pw-section">
             <div className="pw-title">Cambiar contraseña</div>
@@ -1165,6 +1334,57 @@ function App() {
           <h2>7. Menores</h2>
           <p>Este servicio no está dirigido a menores de 18 años. No recopilamos conscientemente datos de menores.</p>
           <div className="terms-footer">© 2025 Minoría Millonaria. Todos los derechos reservados.</div>
+        </div>
+      )}
+
+      {/* ── TOURNAMENTS ── */}
+      {screen === "tournaments" && (
+        <div className="tourn">
+          <div className="topbar">
+            <div className="topbar-logo">🏆 TORNEOS</div>
+            <div className="topbar-right">
+              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
+            </div>
+          </div>
+          <div style={{maxWidth:700,margin:"0 auto 16px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{fontSize:".78rem",color:"rgba(255,255,255,.35)",fontWeight:600,letterSpacing:".1em"}}>TU ZONA HORARIA:</span>
+            <select className="tz-select" value={tz} onChange={e => setTz(e.target.value)}>
+              {TIMEZONES.map(t => <option key={t.tz} value={t.tz}>{t.label}</option>)}
+            </select>
+          </div>
+          <div className="tourn-list">
+            {tournaments.length === 0 && (
+              <div className="tourn-empty">
+                <div style={{fontSize:"3rem",marginBottom:16}}>🏆</div>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".9rem",color:"rgba(255,255,255,.3)",letterSpacing:".1em"}}>NO HAY TORNEOS PRÓXIMOS</div>
+                <div style={{fontSize:".82rem",color:"rgba(255,255,255,.2)",marginTop:8}}>Vuelve pronto para ver los próximos eventos</div>
+              </div>
+            )}
+            {tournaments.map(t => {
+              const joined = myEntries.includes(t.id);
+              const canJoin = tokRef.current >= t.entry_cost && !joined;
+              const entries = t.current_players || 0;
+              return (
+                <div key={t.id} className="tourn-card">
+                  <div className="tourn-title">{t.title}</div>
+                  {t.description && <div style={{fontSize:".85rem",color:"rgba(255,255,255,.4)",marginBottom:12}}>{t.description}</div>}
+                  <div className="tourn-meta">
+                    <span className="tourn-badge date">📅 {formatTZ(t.starts_at, tz)}</span>
+                    <span className="tourn-badge prize">🏆 {t.prize?.toLocaleString()} tokens</span>
+                    <span className="tourn-badge entry">Entrada: {t.entry_cost} {COIN}</span>
+                    <span className="tourn-badge players">👥 {entries}/{t.max_players}</span>
+                  </div>
+                  <button
+                    className={`tourn-btn${joined?" joined":""}`}
+                    disabled={!canJoin && !joined}
+                    onClick={() => canJoin && joinTournament(t)}>
+                    {joined ? "✅ INSCRITO" : tokRef.current < t.entry_cost ? "TOKENS INSUFICIENTES" : "INSCRIBIRSE"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
