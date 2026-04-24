@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Minoría Millonaria</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;background:#060609}
+#root{min-height:100vh}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const SB = "https://gpwqqbudzxtnjnloqgte.supabase.co";
+const KEY = "sb_publishable_xzFCKnAF86_LeufT6AJBsg_EfU0rvtl";
+
+async function authCall(path, body) {
+  const r = await fetch(`${SB}/auth/v1/${path}`, {
+    method: "POST",
+    headers: { apikey: KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+async function dbGet(table, query, token) {
+  const r = await fetch(`${SB}/rest/v1/${table}?${query}&select=*`, {
+    headers: { apikey: KEY, Authorization: `Bearer ${token || KEY}` },
+  });
+  return r.json();
+}
+async function dbInsert(table, body, token) {
+  await fetch(`${SB}/rest/v1/${table}`, {
+    method: "POST",
+    headers: { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(body),
+  });
+}
+async function dbUpdate(table, query, body, token) {
+  await fetch(`${SB}/rest/v1/${table}?${query}`, {
+    method: "PATCH",
+    headers: { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(body),
+  });
+}
+
+const QUESTIONS = [
+  { a: "🐶 Perros", b: "🐱 Gatos" }, { a: "🍕 Pizza", b: "🍔 Hamburguesa" },
+  { a: "🏖️ Playa", b: "🏔️ Montaña" }, { a: "☀️ Verano", b: "❄️ Invierno" },
+  { a: "☕ Café", b: "🍵 Té" }, { a: "🦸 Marvel", b: "🦇 DC" },
+  { a: "🌅 Mañana", b: "🌙 Noche" }, { a: "⚽ Fútbol", b: "🏀 Baloncesto" },
+  { a: "📺 Series", b: "🎬 Películas" }, { a: "📚 Libros", b: "🎮 Videojuegos" },
+  { a: "🚗 Coche", b: "🏍️ Moto" }, { a: "🍦 Vainilla", b: "🍫 Chocolate" },
+  { a: "🎵 Pop", b: "🎸 Rock" }, { a: "🌮 Tacos", b: "🍜 Ramen" },
+  { a: "🐘 Elefantes", b: "🦁 Leones" }, { a: "🍺 Cerveza", b: "🍷 Vino" },
+  { a: "🏃 Correr", b: "🚴 Ciclismo" }, { a: "📱 Android", b: "🍎 iPhone" },
+  { a: "🌍 Viajes", b: "🏠 Casa" }, { a: "🌙 Trasnochador", b: "🌅 Madrugador" },
+  { a: "🐬 Delfines", b: "🦈 Tiburones" }, { a: "🎤 Cantar", b: "💃 Bailar" },
+  { a: "🍰 Pastel", b: "🍩 Donuts" }, { a: "🌧️ Lluvia", b: "🌞 Sol" },
+];
+
+const ROOMS = [
+  { id: "little", name: "Little", cost: 100, color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.25)", bots: 9, icon: "🌱", desc: "Para empezar" },
+  { id: "medium", name: "Medium", cost: 300, color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.25)", bots: 13, icon: "⚡", desc: "Nivel medio" },
+  { id: "prime", name: "Prime", cost: 500, color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.25)", bots: 17, icon: "👑", desc: "Para expertos" },
+  { id: "vip", name: "VIP", cost: 2000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.25)", bots: 23, icon: "💎", desc: "Élite total" },
+];
+
+const CSS = `
+body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
+.app{min-height:100vh;background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(99,102,241,.07) 0,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(251,191,36,.05) 0,transparent 60%),#060609}
+.auth{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.logo-main{font-family:'Orbitron',sans-serif;font-size:clamp(2.2rem,6vw,4rem);font-weight:900;letter-spacing:.06em;background:linear-gradient(135deg,#fde68a,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;text-align:center}
+.logo-sub{font-size:.75rem;letter-spacing:.5em;color:rgba(251,191,36,.45);text-transform:uppercase;margin-top:10px;margin-bottom:48px;font-weight:600;text-align:center}
+.auth-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:40px;width:100%;max-width:400px}
+.auth-heading{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;text-align:center;margin-bottom:28px;color:rgba(255,255,255,.8);letter-spacing:.15em}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px;font-weight:700}
+.field input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:500;outline:none;transition:border-color .2s}
+.field input:focus{border-color:rgba(251,191,36,.5)}
+.btn-gold{width:100%;background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:10px;padding:16px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.12em;cursor:pointer;margin-top:8px;transition:opacity .2s}
+.btn-gold:hover{opacity:.88}
+.btn-gold:disabled{opacity:.4;cursor:not-allowed}
+.auth-switch{text-align:center;margin-top:20px;font-size:.85rem;color:rgba(255,255,255,.35)}
+.auth-switch span{color:#fbbf24;cursor:pointer;font-weight:700}
+.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.28);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#fca5a5;margin-bottom:14px;text-align:center}
+.ok{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.28);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#86efac;margin-bottom:14px;text-align:center}
+.lobby{min-height:100vh;padding:28px 24px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:36px}
+.topbar-logo{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.token-pill{display:flex;align-items:center;gap:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.22);border-radius:40px;padding:8px 18px;font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:#fbbf24}
+.ghost-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:8px 14px;color:rgba(255,255,255,.45);font-family:'Rajdhani',sans-serif;font-size:.85rem;cursor:pointer;font-weight:600;transition:all .2s}
+.ghost-btn:hover{color:#fff;background:rgba(255,255,255,.07)}
+.lobby-hero{text-align:center;margin-bottom:48px}
+.lobby-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.4rem,4vw,2.2rem);font-weight:900;color:#fff;margin-bottom:8px}
+.lobby-hint{color:rgba(255,255,255,.35);font-size:.95rem;font-weight:500}
+.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;max-width:1000px;margin:0 auto}
+.room-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:30px 22px;cursor:pointer;transition:all .3s;text-align:center}
+.room-card:hover{transform:translateY(-5px)}
+.room-card.locked{opacity:.35;cursor:not-allowed;pointer-events:none}
+.room-icon{font-size:2.6rem;margin-bottom:10px;display:block}
+.room-name{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;margin-bottom:4px;letter-spacing:.1em}
+.room-desc{font-size:.82rem;color:rgba(255,255,255,.35);margin-bottom:18px;font-weight:500}
+.room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:9px 18px;font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;color:#fff;display:inline-block}
+.game{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:680px;margin-bottom:28px}
+.game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:40px;width:100%;max-width:680px}
+.phase-tag{font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:center;margin-bottom:20px;font-weight:700}
+.timer-wrap{display:flex;justify-content:center;margin-bottom:22px}
+.timer-ring{position:relative;width:76px;height:76px}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.45rem;font-weight:900;color:#fff}
+.question{font-size:clamp(1.15rem,3vw,1.6rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+.choice{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.09);border-radius:16px;padding:22px 14px;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:rgba(255,255,255,.8);cursor:pointer;transition:all .22s;text-align:center}
+.choice:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
+.choice.sel{background:rgba(251,191,36,.13);border-color:#fbbf24;color:#fbbf24}
+.bar-wrap{margin-bottom:12px}
+.bar-heads{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:8px}
+.bar-track{height:11px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden}
+.bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.bar-total{text-align:center;font-size:.75rem;color:rgba(255,255,255,.28);margin-top:8px;font-weight:600}
+.hidden-bar{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.15);border-radius:12px;padding:18px;text-align:center;font-size:.78rem;letter-spacing:.2em;color:rgba(255,255,255,.3);text-transform:uppercase;font-weight:700;animation:pls 1.8s infinite}
+@keyframes pls{0%,100%{border-color:rgba(255,255,255,.12)}50%{border-color:rgba(255,255,255,.35)}}
+.waiting{text-align:center;padding:36px 0}
+.dots{display:inline-flex;gap:8px;margin-bottom:14px}
+.dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25);animation:db 1.4s infinite}
+.dot:nth-child(2){animation-delay:.22s}.dot:nth-child(3){animation-delay:.44s}
+@keyframes db{0%,80%,100%{transform:translateY(0);opacity:.25}40%{transform:translateY(-8px);opacity:1}}
+.wait-txt{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700}
+.result{text-align:center}
+.verdict{font-family:'Orbitron',sans-serif;font-size:clamp(1.8rem,5vw,2.8rem);font-weight:900;margin-bottom:10px}
+.verdict.win{color:#4ade80}.verdict.lose{color:#f87171}.verdict.tie{color:#fbbf24}
+.verdict-sub{color:rgba(255,255,255,.4);font-size:.9rem;margin-bottom:20px;font-weight:500}
+.token-delta{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:28px}
+.token-delta.p{color:#4ade80}.token-delta.n{color:#f87171}
+.result-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.r-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:13px 26px;color:#fff;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.1em}
+.r-btn:hover{background:rgba(255,255,255,.1)}
+`;
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function genBots(n) {
+  const bias = .28 + Math.random() * .52;
+  return Array.from({ length: n }, (_, i) => ({ id: i, vote: Math.random() < bias ? "a" : "b" }));
+}
+
+function App() {
+  const [screen, setScreen] = useState("auth");
+  const [mode, setMode] = useState("register");
+  const [form, setForm] = useState({ name: "", email: "", pw: "" });
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [user, setUser] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [phase, setPhase] = useState("waiting");
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [q, setQ] = useState(null);
+  const [bots, setBots] = useState([]);
+  const [vote, setVote] = useState("a");
+  const [res, setRes] = useState(null);
+  const voteRef = useRef("a");
+  const botsRef = useRef([]);
+  const tokRef = useRef(0);
+  const tokenRef = useRef("");
+  const userIdRef = useRef("");
+  const t1 = useRef(null);
+  const t2 = useRef(null);
+
+  function clrTimers() { clearInterval(t1.current); clearInterval(t2.current); clearTimeout(t1.current); }
+
+  async function doRegister() {
+    setErr(""); setMsg("");
+    const { name, email, pw } = form;
+    if (!name.trim() || !email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
+    if (!email.includes("@")) { setErr("Correo no válido"); return; }
+    if (pw.length < 6) { setErr("La contraseña debe tener al menos 6 caracteres"); return; }
+    setBusy(true);
+    try {
+      const data = await authCall("signup", { email, password: pw });
+      if (data.error) { setErr(data.error_description || data.error); setBusy(false); return; }
+      if (data.access_token) {
+        tokenRef.current = data.access_token;
+        userIdRef.current = data.user.id;
+        await dbInsert("profiles", { id: data.user.id, username: name, tokens: 1000 }, data.access_token);
+        tokRef.current = 1000;
+        setUser({ name, tokens: 1000 });
+        setScreen("lobby");
+      } else {
+        setMsg("✅ Revisa tu correo para confirmar la cuenta");
+      }
+    } catch(e) { setErr("Error de conexión. Inténtalo de nuevo."); }
+    setBusy(false);
+  }
+
+  async function doLogin() {
+    setErr(""); setMsg("");
+    const { email, pw } = form;
+    if (!email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
+    setBusy(true);
+    try {
+      const data = await authCall("token?grant_type=password", { email, password: pw });
+      if (data.error || !data.access_token) { setErr("Correo o contraseña incorrectos"); setBusy(false); return; }
+      tokenRef.current = data.access_token;
+      userIdRef.current = data.user.id;
+      const profiles = await dbGet("profiles", `id=eq.${data.user.id}`, data.access_token);
+      if (profiles && profiles[0]) {
+        tokRef.current = profiles[0].tokens;
+        setUser({ name: profiles[0].username, tokens: profiles[0].tokens });
+        setScreen("lobby");
+      } else {
+        setErr("No se encontró el perfil");
+      }
+    } catch(e) { setErr("Error de conexión. Inténtalo de nuevo."); }
+    setBusy(false);
+  }
+
+  function doLogout() { clrTimers(); tokenRef.current = ""; setUser(null); setScreen("auth"); }
+
+  async function saveTok(n) {
+    tokRef.current = n;
+    setUser(u => ({ ...u, tokens: n }));
+    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { tokens: n }, tokenRef.current);
+  }
+
+  function doVote(v) {
+    if (phase === "waiting" || phase === "result") return;
+    setVote(v); voteRef.current = v;
+  }
+
+  function enterRoom(r) {
+    if (tokRef.current < r.cost) return;
+    clrTimers();
+    setRoom(r); setPhase("waiting"); setRes(null); setBots([]); setQ(null);
+    setScreen("game");
+    t1.current = setTimeout(() => startRound(r), 1600);
+  }
+
+  function startRound(r) {
+    const q2 = rand(QUESTIONS);
+    const b = genBots(r.bots);
+    botsRef.current = b; setBots(b); setQ(q2);
+    const iv = Math.random() < .5 ? "a" : "b";
+    setVote(iv); voteRef.current = iv;
+    setPhase("active_v"); setTimeLeft(10);
+    let tv = 10;
+    t1.current = setInterval(() => {
+      tv--; setTimeLeft(tv);
+      if (tv <= 0) {
+        clearInterval(t1.current);
+        setPhase("active_h"); setTimeLeft(5);
+        let th = 5;
+        t2.current = setInterval(() => {
+          th--; setTimeLeft(th);
+          if (th <= 0) { clearInterval(t2.current); endRound(r); }
+        }, 1000);
+      }
+    }, 1000);
+  }
+
+  function endRound(r) {
+    const pv = voteRef.current;
+    const all = [...botsRef.current.map(b => b.vote), pv];
+    const cA = all.filter(v => v === "a").length;
+    const cB = all.filter(v => v === "b").length;
+    let minority = "tie";
+    if (cA < cB) minority = "a"; else if (cB < cA) minority = "b";
+    let delta = 0, win = false, tie = minority === "tie";
+    if (!tie) {
+      const minC = Math.min(cA, cB), majC = Math.max(cA, cB);
+      if (pv === minority) { win = true; delta = Math.floor(r.cost * (majC / minC)); }
+      else delta = -r.cost;
+    }
+    const newTok = Math.max(0, tokRef.current + delta);
+    saveTok(newTok);
+    setRes({ win, tie, delta, cA, cB, minority, pv });
+    setPhase("result");
+  }
+
+  const lA = bots.filter(b => b.vote === "a").length + (vote === "a" ? 1 : 0);
+  const tot = bots.length + 1;
+  const pA = tot ? Math.round((lA / tot) * 100) : 50;
+  const isV = phase === "active_v";
+  const C = 2 * Math.PI * 33;
+  const off = C - (timeLeft / (isV ? 10 : 5)) * C;
+  const tc = isV ? "#fbbf24" : "#c084fc";
+
+  return (
+    <div className="app">
+      <style>{CSS}</style>
+
+      {screen === "auth" && (
+        <div className="auth">
+          <div className="logo-main">MINORÍA<br/>MILLONARIA</div>
+          <div className="logo-sub">La minoría siempre gana</div>
+          <div className="auth-card">
+            <div className="auth-heading">{mode === "register" ? "CREAR CUENTA" : "INICIAR SESIÓN"}</div>
+            {err && <div className="err">{err}</div>}
+            {msg && <div className="ok">{msg}</div>}
+            <div>
+              {mode === "register" && (
+                <div className="field">
+                  <label>Nombre de usuario</label>
+                  <input type="text" placeholder="Tu alias..." value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+              )}
+              <div className="field">
+                <label>Correo electrónico</label>
+                <input type="email" placeholder="tu@correo.com" value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Contraseña</label>
+                <input type="password" placeholder="••••••••" value={form.pw}
+                  onChange={e => setForm(f => ({ ...f, pw: e.target.value }))} />
+              </div>
+              <button className="btn-gold" disabled={busy}
+                onClick={mode === "register" ? doRegister : doLogin}>
+                {busy ? "CARGANDO..." : mode === "register" ? "REGISTRARSE · 1000 🪙 GRATIS" : "ENTRAR AL JUEGO"}
+              </button>
+            </div>
+            <div className="auth-switch">
+              {mode === "register"
+                ? <span>¿Ya tienes cuenta? <span style={{color:"#fbbf24",cursor:"pointer",fontWeight:700}} onClick={() => { setMode("login"); setErr(""); setMsg(""); }}>Inicia sesión</span></span>
+                : <span>¿Sin cuenta? <span style={{color:"#fbbf24",cursor:"pointer",fontWeight:700}} onClick={() => { setMode("register"); setErr(""); setMsg(""); }}>Regístrate</span></span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {screen === "lobby" && (
+        <div className="lobby">
+          <div className="topbar">
+            <div className="topbar-logo">MINORÍA MILLONARIA</div>
+            <div className="topbar-right">
+              <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={doLogout}>Salir</button>
+            </div>
+          </div>
+          <div className="lobby-hero">
+            <div className="lobby-title">ELIGE TU SALA</div>
+            <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
+          </div>
+          <div className="rooms">
+            {ROOMS.map(r => (
+              <div key={r.id}
+                className={`room-card${user?.tokens < r.cost ? " locked" : ""}`}
+                style={{ border: `1px solid ${r.color}44` }}
+                onClick={() => enterRoom(r)}>
+                <span className="room-icon">{r.icon}</span>
+                <div className="room-name" style={{ color: r.color }}>{r.name}</div>
+                <div className="room-desc">{r.desc}</div>
+                <div className="room-bet">Apuesta: <em style={{ color: r.color }}>{r.cost.toLocaleString()} 🪙</em></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {screen === "game" && room && (
+        <div className="game">
+          <div className="game-hdr">
+            <button className="ghost-btn" onClick={() => { clrTimers(); setScreen("lobby"); }}>← Lobby</button>
+            <div className="token-pill" style={{ color: room.color, borderColor: room.color + "44", background: room.color + "15" }}>
+              {room.icon} {room.name} · {room.cost.toLocaleString()} 🪙
+            </div>
+            <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+          </div>
+          <div className="game-card">
+            {phase === "waiting" && (
+              <div className="waiting">
+                <div className="dots"><div className="dot"></div><div className="dot"></div><div className="dot"></div></div>
+                <div className="wait-txt">Preparando la ronda...</div>
+              </div>
+            )}
+            {(phase === "active_v" || phase === "active_h") && q && (
+              <div>
+                <div className="phase-tag">
+                  {phase === "active_v" ? "⚡ Votación en directo" : "🔒 Barra oculta · Decide ahora"}
+                </div>
+                <div className="timer-wrap">
+                  <div className="timer-ring">
+                    <svg width="76" height="76" viewBox="0 0 76 76">
+                      <circle cx="38" cy="38" r="33" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="5" />
+                      <circle cx="38" cy="38" r="33" fill="none" stroke={tc} strokeWidth="5"
+                        strokeDasharray={C} strokeDashoffset={off} strokeLinecap="round"
+                        style={{ transition: "stroke-dashoffset .9s linear" }} />
+                    </svg>
+                    <div className="timer-num">{timeLeft}</div>
+                  </div>
+                </div>
+                <div className="question">¿ {q.a} &nbsp;vs&nbsp; {q.b} ?</div>
+                <div className="choices">
+                  <button className={`choice${vote === "a" ? " sel" : ""}`} onClick={() => doVote("a")}>{q.a}</button>
+                  <button className={`choice${vote === "b" ? " sel" : ""}`} onClick={() => doVote("b")}>{q.b}</button>
+                </div>
+                {phase === "active_v" ? (
+                  <div className="bar-wrap">
+                    <div className="bar-heads">
+                      <span style={{ color: "#4ade80" }}>{q.a} · {pA}%</span>
+                      <span style={{ color: "#60a5fa" }}>{q.b} · {100 - pA}%</span>
+                    </div>
+                    <div className="bar-track"><div className="bar-a" style={{ width: `${pA}%` }}></div></div>
+                    <div className="bar-total">{tot} jugadores en esta ronda</div>
+                  </div>
+                ) : (
+                  <div className="hidden-bar">🔒 Barra oculta — ¿cambias de opinión?</div>
+                )}
+              </div>
+            )}
+            {phase === "result" && res && q && (
+              <div className="result">
+                <div className={`verdict ${res.tie ? "tie" : res.win ? "win" : "lose"}`}>
+                  {res.tie ? "EMPATE" : res.win ? "¡GANASTE!" : "PERDISTE"}
+                </div>
+                <div className="verdict-sub">
+                  {res.tie ? "Mismo número de votos en ambos lados"
+                    : res.win ? `Estabas en la minoría (${res.pv === "a" ? q.a : q.b})`
+                    : `Estabas en la mayoría (${res.pv === "a" ? q.a : q.b})`}
+                </div>
+                <div className={`token-delta ${res.delta >= 0 ? "p" : "n"}`}>
+                  {res.delta > 0 ? "+" : ""}{res.delta.toLocaleString()} 🪙
+                </div>
+                <div className="bar-wrap" style={{ maxWidth: 480, margin: "0 auto 8px" }}>
+                  <div className="bar-heads">
+                    <span style={{ color: "#4ade80" }}>{q.a} · {Math.round(res.cA / (res.cA + res.cB) * 100)}%</span>
+                    <span style={{ color: "#60a5fa" }}>{q.b} · {Math.round(res.cB / (res.cA + res.cB) * 100)}%</span>
+                  </div>
+                  <div className="bar-track">
+                    <div className="bar-a" style={{ width: `${Math.round(res.cA / (res.cA + res.cB) * 100)}%` }}></div>
+                  </div>
+                  <div className="bar-total">
+                    Minoría: {res.minority === "tie" ? "Empate" : res.minority === "a" ? q.a : q.b}
+                    &nbsp;·&nbsp;{res.cA + res.cB} jugadores
+                  </div>
+                </div>
+                <div className="result-btns">
+                  <button className="r-btn" onClick={() => { clrTimers(); enterRoom(room); }}>JUGAR DE NUEVO</button>
+                  <button className="r-btn" onClick={() => { clrTimers(); setScreen("lobby"); }}>CAMBIAR SALA</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
