@@ -438,25 +438,17 @@ function App() {
   }
 
   async function castVote(v) {
-    if (!roundRef.current || voteRef.current !== null) return;
+    if (!roundRef.current) return;
     const elapsed = (Date.now() - new Date(roundRef.current.started_at).getTime()) / 1000;
     if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return;
-    // Anti-cheat: verificar si ya existe voto en BD para esta ronda
-    const existing = await dbGet("round_votes",
-      `round_id=eq.${roundRef.current.round_id}&user_id=eq.${userIdRef.current}`,
-      tokenRef.current);
-    if (existing && existing.length > 0) {
-      voteRef.current = existing[0].vote;
-      setVote(existing[0].vote);
-      return;
-    }
     voteRef.current = v; setVote(v);
-    await dbInsertRaw("round_votes", {
+    // Upsert: si ya existe voto del usuario en esta ronda, lo sobreescribe
+    await dbUpsert("round_votes", {
       round_id: roundRef.current.round_id,
       user_id: userIdRef.current,
       vote: v,
       room_id: roundRef.current.room_id
-    }, tokenRef.current);
+    }, "round_id,user_id", tokenRef.current);
   }
 
   async function computeResult(r, row, cA, cB) {
@@ -625,8 +617,8 @@ function App() {
                 </div>
                 <div className="question">¿ {roundData.question_a} &nbsp;vs&nbsp; {roundData.question_b} ?</div>
                 <div className="choices">
-                  <button className={`choice${vote === "a" ? " sel" : ""}${vote !== null ? " disabled" : ""}`} onClick={() => castVote("a")}>{roundData.question_a}</button>
-                  <button className={`choice${vote === "b" ? " sel" : ""}${vote !== null ? " disabled" : ""}`} onClick={() => castVote("b")}>{roundData.question_b}</button>
+                  <button className={`choice${vote === "a" ? " sel" : ""}`} onClick={() => castVote("a")}>{roundData.question_a}</button>
+                  <button className={`choice${vote === "b" ? " sel" : ""}`} onClick={() => castVote("b")}>{roundData.question_b}</button>
                 </div>
                 {vote === null && <div style={{textAlign:"center",fontSize:".78rem",color:"rgba(255,255,255,.25)",letterSpacing:".15em",marginBottom:12}}>TAP PARA VOTAR</div>}
                 {phase === "voting" ? (
