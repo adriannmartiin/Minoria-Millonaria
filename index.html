@@ -154,8 +154,9 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .choice.disabled{pointer-events:none;opacity:.6}
 .bar-wrap{margin-bottom:12px}
 .bar-heads{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:8px}
-.bar-track{height:11px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden}
-.bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bar-track{height:11px;background:linear-gradient(90deg,#1a3a2a,#1a2a3a);border-radius:100px;overflow:hidden;position:relative}
+.bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .8s cubic-bezier(.4,0,.2,1);position:relative;z-index:1}
+.bar-track::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,#3b82f6);border-radius:100px;z-index:0}
 .bar-total{text-align:center;font-size:.75rem;color:rgba(255,255,255,.28);margin-top:8px;font-weight:600}
 .hidden-bar{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.15);border-radius:12px;padding:18px;text-align:center;font-size:.78rem;letter-spacing:.2em;color:rgba(255,255,255,.3);text-transform:uppercase;font-weight:700;animation:pls 1.8s infinite}
 @keyframes pls{0%,100%{border-color:rgba(255,255,255,.12)}50%{border-color:rgba(255,255,255,.35)}}
