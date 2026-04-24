@@ -96,6 +96,7 @@ const RESULT_TIME  = 6;
 const ROUND_TOTAL  = VOTE_VISIBLE + VOTE_HIDDEN + RESULT_TIME;
 
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+const COIN = <img src="/coin.png" style={{width:'20px',height:'20px',objectFit:'contain',verticalAlign:'middle',display:'inline-block',marginBottom:'2px'}} />;
 
 const CSS = `
 body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
@@ -198,6 +199,23 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .btn-sm:disabled{opacity:.4;cursor:not-allowed}
 .logout-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:13px 22px;color:#fca5a5;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;max-width:800px;width:100%}
 .logout-btn:hover{background:rgba(239,68,68,.18)}
+/* NO TOKENS */
+.notok{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.notok-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:40px;width:100%;max-width:480px;text-align:center}
+.notok-icon{font-size:4rem;margin-bottom:16px}
+.notok-title{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;color:#f87171;margin-bottom:8px;letter-spacing:.06em}
+.notok-sub{color:rgba(255,255,255,.35);font-size:.9rem;margin-bottom:28px;font-weight:500}
+.notok-bal{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fbbf24;margin-bottom:28px}
+.ad-box{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:16px;padding:24px;margin-bottom:20px}
+.ad-title{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.2em;margin-bottom:12px}
+.ad-screen{background:#111;border-radius:10px;height:80px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:.8rem;color:rgba(255,255,255,.2);letter-spacing:.1em;font-weight:600}
+.ad-countdown{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px}
+.ad-hint{font-size:.75rem;color:rgba(255,255,255,.25);letter-spacing:.1em}
+.notok-rooms{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.notok-room{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 16px;cursor:pointer;transition:all .2s}
+.notok-room:hover{background:rgba(255,255,255,.06)}
+.notok-room.disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
+
 .empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
 
@@ -330,7 +348,33 @@ function App() {
     earned:  history.reduce((s, h) => s + (h.delta > 0 ? h.delta : 0), 0),
   };
 
-  // ── GAME ──────────────────────────────────────────────────────────────────
+  // No-tokens screen
+  const [noTokRoom, setNoTokRoom] = useState(null);
+  const [adCountdown, setAdCountdown] = useState(0);
+  const [adWatched, setAdWatched] = useState(false);
+  const adRef = useRef(null);
+
+  function watchAd() {
+    setAdCountdown(5);
+    setAdWatched(false);
+    adRef.current = setInterval(() => {
+      setAdCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(adRef.current);
+          setAdWatched(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  async function claimAdTokens() {
+    const newTok = tokRef.current + 100;
+    await saveTok(newTok);
+    setAdWatched(false);
+    setAdCountdown(0);
+  }
   function stopGame() {
     clearInterval(pollRef.current);
     setRoom(null); setRound(null); setVote(null);
@@ -340,7 +384,13 @@ function App() {
   }
 
   async function enterRoom(r) {
-    if (tokRef.current < r.cost) return;
+    if (tokRef.current < r.cost) {
+      setNoTokRoom(r);
+      setAdWatched(false);
+      setAdCountdown(0);
+      setScreen("notokens");
+      return;
+    }
     stopGame();
     setRoom(r); setScreen("game"); setPhase("waiting");
     await pollRound(r);
@@ -391,6 +441,15 @@ function App() {
     if (!roundRef.current || voteRef.current !== null) return;
     const elapsed = (Date.now() - new Date(roundRef.current.started_at).getTime()) / 1000;
     if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return;
+    // Anti-cheat: verificar si ya existe voto en BD para esta ronda
+    const existing = await dbGet("round_votes",
+      `round_id=eq.${roundRef.current.round_id}&user_id=eq.${userIdRef.current}`,
+      tokenRef.current);
+    if (existing && existing.length > 0) {
+      voteRef.current = existing[0].vote;
+      setVote(existing[0].vote);
+      return;
+    }
     voteRef.current = v; setVote(v);
     await dbInsertRaw("round_votes", {
       round_id: roundRef.current.round_id,
@@ -490,7 +549,7 @@ function App() {
                   onChange={e => setForm(f => ({ ...f, pw: e.target.value }))} />
               </div>
               <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
-                {busy ? "CARGANDO..." : mode === "register" ? "REGISTRARSE · 1000 🪙 GRATIS" : "ENTRAR AL JUEGO"}
+                {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 1000 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
               </button>
             </div>
             <div className="auth-switch">
@@ -508,7 +567,7 @@ function App() {
           <div className="topbar">
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
-              <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
               <button className="ghost-btn" onClick={loadProfile}>👤 Mi perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
             </div>
@@ -520,13 +579,13 @@ function App() {
           <div className="rooms">
             {ROOMS.map(r => (
               <div key={r.id}
-                className={`room-card${user?.tokens < r.cost ? " locked" : ""}`}
-                style={{ border: `1px solid ${r.color}33`, boxShadow: user?.tokens >= r.cost ? r.glow : "none" }}
+                className="room-card"
+                style={{ border: `1px solid ${r.color}33`, boxShadow: user?.tokens >= r.cost ? r.glow : "none", opacity: user?.tokens < r.cost ? 0.5 : 1 }}
                 onClick={() => enterRoom(r)}>
                 <span className="room-icon">{r.icon}</span>
                 <div className="room-name" style={{ color: r.color }}>{r.name}</div>
                 <div className="room-desc">{r.desc}</div>
-                <div className="room-bet">Apuesta: <em style={{ color: r.color }}>{r.cost.toLocaleString()} 🪙</em></div>
+                <div className="room-bet">Apuesta: <em style={{ color: r.color }}>{r.cost.toLocaleString()} {COIN}</em></div>
               </div>
             ))}
           </div>
@@ -539,9 +598,9 @@ function App() {
           <div className="game-hdr">
             <button className="ghost-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>← Lobby</button>
             <div className="token-pill" style={{ color: room.color, borderColor: room.color + "44", background: room.color + "12" }}>
-              {room.icon} {room.name} · {room.cost.toLocaleString()} 🪙
+              {room.icon} {room.name} · {room.cost.toLocaleString()} {COIN}
             </div>
-            <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+            <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
           </div>
           <div className="game-card">
             {phase === "waiting" && (
@@ -590,7 +649,7 @@ function App() {
                   <>
                     <div className="verdict tie">SIN VOTO</div>
                     <div className="verdict-sub">No votaste a tiempo</div>
-                    <div className="token-delta z">±0 🪙</div>
+                    <div className="token-delta z">±0 {COIN}</div>
                   </>
                 ) : (
                   <>
@@ -603,7 +662,7 @@ function App() {
                         : `Mayoría: ${result.myVote === "a" ? result.q.a : result.q.b}`}
                     </div>
                     <div className={`token-delta ${result.delta > 0 ? "p" : result.delta < 0 ? "n" : "z"}`}>
-                      {result.delta > 0 ? "+" : ""}{result.delta.toLocaleString()} 🪙
+                      {result.delta > 0 ? "+" : ""}{result.delta.toLocaleString()} {COIN}
                     </div>
                   </>
                 )}
@@ -629,7 +688,7 @@ function App() {
           <div className="topbar">
             <div className="topbar-logo">MI PERFIL</div>
             <div className="topbar-right">
-              <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
               <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
             </div>
           </div>
@@ -641,7 +700,7 @@ function App() {
               <div className="profile-name">{user?.name}</div>
               <div className="profile-email">{userEmail}</div>
               <div style={{marginTop:8,fontSize:".8rem",color:"rgba(255,255,255,.3)",fontWeight:600}}>
-                🪙 {user?.tokens?.toLocaleString()} tokens
+                {COIN} {user?.tokens?.toLocaleString()} tokens
               </div>
             </div>
           </div>
@@ -688,7 +747,7 @@ function App() {
                 </div>
                 <div style={{textAlign:"right"}}>
                   <div className={`history-delta ${h.delta > 0 ? "p" : h.delta < 0 ? "n" : "z"}`}>
-                    {h.delta > 0 ? "+" : ""}{h.delta?.toLocaleString()} 🪙
+                    {h.delta > 0 ? "+" : ""}{h.delta?.toLocaleString()} {COIN}
                   </div>
                   <div style={{fontSize:".72rem",color:"rgba(255,255,255,.25)",marginTop:3}}>
                     {h.result === "win" ? "✅ Victoria" : h.result === "lose" ? "❌ Derrota" : h.result === "tie" ? "🤝 Empate" : "⏭ Sin voto"}
@@ -724,6 +783,65 @@ function App() {
           <button className="logout-btn" onClick={doLogout}>CERRAR SESIÓN</button>
         </div>
       )}
+      {/* ── NO TOKENS ── */}
+      {screen === "notokens" && noTokRoom && (
+        <div className="notok">
+          <div className="notok-card">
+            <div className="notok-icon"><img src="/coin.png" style={{width:"80px",height:"80px",objectFit:"contain"}} /></div>
+            <div className="notok-title">TOKENS INSUFICIENTES</div>
+            <div className="notok-sub">Necesitas {noTokRoom.cost.toLocaleString()} tokens para entrar a la sala {noTokRoom.name}</div>
+            <div className="notok-bal">Tu saldo: {user?.tokens?.toLocaleString()} {COIN}</div>
+
+            {/* Simulated ad */}
+            <div className="ad-box">
+              <div className="ad-title">VER ANUNCIO · GANAR 100 {COIN}</div>
+              {adCountdown === 0 && !adWatched && (
+                <div>
+                  <div className="ad-screen">[ ESPACIO PUBLICITARIO ]</div>
+                  <button className="btn-gold" onClick={watchAd}>▶ VER ANUNCIO</button>
+                </div>
+              )}
+              {adCountdown > 0 && (
+                <div>
+                  <div className="ad-screen">[ ANUNCIO EN REPRODUCCIÓN ]</div>
+                  <div className="ad-countdown">{adCountdown}s</div>
+                  <div className="ad-hint">No cierres esta pantalla...</div>
+                </div>
+              )}
+              {adWatched && (
+                <div>
+                  <div className="ad-screen" style={{color:"#4ade80",fontSize:"1.2rem"}}>✅ ¡Anuncio completado!</div>
+                  <button className="btn-gold" onClick={claimAdTokens}>RECLAMAR +100 {COIN}</button>
+                </div>
+              )}
+            </div>
+
+            {/* Accessible rooms */}
+            <div style={{textAlign:"left",marginBottom:10,fontSize:".72rem",letterSpacing:".15em",color:"rgba(255,255,255,.3)",fontWeight:700,textTransform:"uppercase"}}>Salas disponibles con tu saldo</div>
+            <div className="notok-rooms">
+              {ROOMS.map(r => (
+                <div key={r.id}
+                  className={`notok-room${tokRef.current < r.cost ? " disabled" : ""}`}
+                  onClick={() => { if (tokRef.current >= r.cost) { setScreen("lobby"); enterRoom(r); } }}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:"1.4rem"}}>{r.icon}</span>
+                    <div>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".85rem",fontWeight:700,color:r.color}}>{r.name}</div>
+                      <div style={{fontSize:".72rem",color:"rgba(255,255,255,.3)"}}>{r.cost.toLocaleString()} {COIN}</div>
+                    </div>
+                  </div>
+                  {tokRef.current >= r.cost
+                    ? <span style={{fontSize:".72rem",color:"#4ade80",fontWeight:700,letterSpacing:".1em"}}>ENTRAR →</span>
+                    : <span style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",fontWeight:700}}>BLOQUEADA</span>}
+                </div>
+              ))}
+            </div>
+
+            <button className="ghost-btn" style={{width:"100%",textAlign:"center"}} onClick={() => setScreen("lobby")}>← Volver al lobby</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
