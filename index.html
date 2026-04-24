@@ -17,11 +17,12 @@ html,body{min-height:100vh;background:#060609}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useRef, useEffect } = React;
+const { useState, useRef, useEffect, useCallback } = React;
 
 const SB = "https://gpwqqbudzxtnjnloqgte.supabase.co";
 const KEY = "sb_publishable_xzFCKnAF86_LeufT6AJBsg_EfU0rvtl";
 
+// ── API HELPERS ──────────────────────────────────────────────────────────────
 async function authCall(path, body) {
   const r = await fetch(`${SB}/auth/v1/${path}`, {
     method: "POST",
@@ -36,12 +37,21 @@ async function dbGet(table, query, token) {
   });
   return r.json();
 }
-async function dbInsert(table, body, token) {
-  await fetch(`${SB}/rest/v1/${table}`, {
+async function dbUpsert(table, body, conflict, token) {
+  const r = await fetch(`${SB}/rest/v1/${table}?on_conflict=${conflict}`, {
+    method: "POST",
+    headers: { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+async function dbInsertRaw(table, body, token) {
+  const r = await fetch(`${SB}/rest/v1/${table}`, {
     method: "POST",
     headers: { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify(body),
   });
+  return r;
 }
 async function dbUpdate(table, query, body, token) {
   await fetch(`${SB}/rest/v1/${table}?${query}`, {
@@ -51,6 +61,7 @@ async function dbUpdate(table, query, body, token) {
   });
 }
 
+// ── GAME DATA ────────────────────────────────────────────────────────────────
 const QUESTIONS = [
   { a: "🐶 Perros", b: "🐱 Gatos" }, { a: "🍕 Pizza", b: "🍔 Hamburguesa" },
   { a: "🏖️ Playa", b: "🏔️ Montaña" }, { a: "☀️ Verano", b: "❄️ Invierno" },
@@ -67,13 +78,22 @@ const QUESTIONS = [
 ];
 
 const ROOMS = [
-  { id: "starter", name: "Starter", cost: 200, color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.25)", bots: 9, icon: "🌱", desc: "Para empezar" },
-  { id: "medium", name: "Medium", cost: 500, color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.25)", bots: 13, icon: "⚡", desc: "Nivel medio" },
-  { id: "prime", name: "Prime", cost: 2000, color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.25)", bots: 17, icon: "👑", desc: "Para expertos" },
-  { id: "vip", name: "VIP", cost: 5000, color: "#f97316", glow: "0 0 30px rgba(249,115,22,0.25)", bots: 21, icon: "💎", desc: "Jugadores serios" },
-  { id: "elite", name: "Elite", cost: 10000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.25)", bots: 25, icon: "💠", desc: "Élite total" },
+  { id: "starter", name: "Starter", cost: 200,   color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.3)",   icon: "🌱", desc: "Para empezar" },
+  { id: "medium",  name: "Medium",  cost: 500,   color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.3)",   icon: "⚡", desc: "Nivel medio" },
+  { id: "prime",   name: "Prime",   cost: 2000,  color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.3)",  icon: "👑", desc: "Para expertos" },
+  { id: "vip",     name: "VIP",     cost: 5000,  color: "#f97316", glow: "0 0 30px rgba(249,115,22,0.3)",   icon: "💎", desc: "Jugadores serios" },
+  { id: "elite",   name: "Elite",   cost: 10000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.3)",   icon: "💠", desc: "Élite total" },
 ];
 
+// Round timing (seconds)
+const VOTE_VISIBLE  = 10; // bar visible
+const VOTE_HIDDEN   = 5;  // bar hidden
+const RESULT_TIME   = 6;  // show result
+const ROUND_TOTAL   = VOTE_VISIBLE + VOTE_HIDDEN + RESULT_TIME; // 21s
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .app{min-height:100vh;background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(99,102,241,.07) 0,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(251,191,36,.05) 0,transparent 60%),#060609}
@@ -103,88 +123,90 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .lobby-hero{text-align:center;margin-bottom:48px}
 .lobby-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.4rem,4vw,2.2rem);font-weight:900;color:#fff;margin-bottom:8px}
 .lobby-hint{color:rgba(255,255,255,.35);font-size:.95rem;font-weight:500}
-.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;max-width:1000px;margin:0 auto}
-.room-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:30px 22px;cursor:pointer;transition:all .3s;text-align:center}
+.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;max-width:1100px;margin:0 auto}
+.room-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:28px 20px;cursor:pointer;transition:all .3s;text-align:center}
 .room-card:hover{transform:translateY(-5px)}
-.room-card.locked{opacity:.35;cursor:not-allowed;pointer-events:none}
-.room-icon{font-size:2.6rem;margin-bottom:10px;display:block}
-.room-name{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;margin-bottom:4px;letter-spacing:.1em}
-.room-desc{font-size:.82rem;color:rgba(255,255,255,.35);margin-bottom:18px;font-weight:500}
-.room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:9px 18px;font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;color:#fff;display:inline-block}
+.room-card.locked{opacity:.3;cursor:not-allowed;pointer-events:none}
+.room-icon{font-size:2.4rem;margin-bottom:10px;display:block}
+.room-name{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px;letter-spacing:.1em}
+.room-desc{font-size:.82rem;color:rgba(255,255,255,.35);margin-bottom:16px;font-weight:500}
+.room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:8px 16px;font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:#fff;display:inline-block}
 .game{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:680px;margin-bottom:28px}
-.game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:40px;width:100%;max-width:680px}
+.game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:680px;margin-bottom:28px;flex-wrap:wrap;gap:10px}
+.game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:36px;width:100%;max-width:680px}
 .phase-tag{font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:center;margin-bottom:20px;font-weight:700}
 .timer-wrap{display:flex;justify-content:center;margin-bottom:22px}
 .timer-ring{position:relative;width:76px;height:76px}
 .timer-ring svg{transform:rotate(-90deg)}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.45rem;font-weight:900;color:#fff}
-.question{font-size:clamp(1.15rem,3vw,1.6rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
+.question{font-size:clamp(1.1rem,3vw,1.55rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
-.choice{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.09);border-radius:16px;padding:22px 14px;font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:rgba(255,255,255,.8);cursor:pointer;transition:all .22s;text-align:center}
+.choice{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 12px;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;color:rgba(255,255,255,.8);cursor:pointer;transition:all .22s;text-align:center;line-height:1.3}
 .choice:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
 .choice.sel{background:rgba(251,191,36,.13);border-color:#fbbf24;color:#fbbf24}
+.choice.disabled{pointer-events:none;opacity:.6}
 .bar-wrap{margin-bottom:12px}
 .bar-heads{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:8px}
 .bar-track{height:11px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden}
-.bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .8s cubic-bezier(.4,0,.2,1)}
 .bar-total{text-align:center;font-size:.75rem;color:rgba(255,255,255,.28);margin-top:8px;font-weight:600}
 .hidden-bar{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.15);border-radius:12px;padding:18px;text-align:center;font-size:.78rem;letter-spacing:.2em;color:rgba(255,255,255,.3);text-transform:uppercase;font-weight:700;animation:pls 1.8s infinite}
 @keyframes pls{0%,100%{border-color:rgba(255,255,255,.12)}50%{border-color:rgba(255,255,255,.35)}}
-.waiting{text-align:center;padding:36px 0}
+.waiting{text-align:center;padding:40px 0}
 .dots{display:inline-flex;gap:8px;margin-bottom:14px}
 .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25);animation:db 1.4s infinite}
 .dot:nth-child(2){animation-delay:.22s}.dot:nth-child(3){animation-delay:.44s}
 @keyframes db{0%,80%,100%{transform:translateY(0);opacity:.25}40%{transform:translateY(-8px);opacity:1}}
-.wait-txt{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700}
+.wait-txt{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700;margin-bottom:8px}
+.wait-sub{font-size:.82rem;color:rgba(255,255,255,.2);font-weight:500}
+.players-count{font-family:'Orbitron',sans-serif;font-size:.75rem;color:rgba(255,255,255,.25);text-align:center;margin-top:12px;letter-spacing:.1em}
 .result{text-align:center}
 .verdict{font-family:'Orbitron',sans-serif;font-size:clamp(1.8rem,5vw,2.8rem);font-weight:900;margin-bottom:10px}
 .verdict.win{color:#4ade80}.verdict.lose{color:#f87171}.verdict.tie{color:#fbbf24}
 .verdict-sub{color:rgba(255,255,255,.4);font-size:.9rem;margin-bottom:20px;font-weight:500}
-.token-delta{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:28px}
-.token-delta.p{color:#4ade80}.token-delta.n{color:#f87171}
-.result-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-.r-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:13px 26px;color:#fff;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.1em}
+.token-delta{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:24px}
+.token-delta.p{color:#4ade80}.token-delta.n{color:#f87171}.token-delta.z{color:rgba(255,255,255,.4)}
+.next-round{font-size:.78rem;letter-spacing:.15em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-top:16px;font-weight:700}
+.r-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 24px;color:#fff;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.1em;margin-top:16px}
 .r-btn:hover{background:rgba(255,255,255,.1)}
 `;
 
-function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function genBots(n) {
-  const bias = .28 + Math.random() * .52;
-  return Array.from({ length: n }, (_, i) => ({ id: i, vote: Math.random() < bias ? "a" : "b" }));
-}
-
+// ── APP ──────────────────────────────────────────────────────────────────────
 function App() {
-  const [screen, setScreen] = useState("auth");
-  const [mode, setMode] = useState("register");
-  const [form, setForm] = useState({ name: "", email: "", pw: "" });
-  const [err, setErr] = useState("");
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [user, setUser] = useState(null);
-  const [room, setRoom] = useState(null);
-  const [phase, setPhase] = useState("waiting");
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [q, setQ] = useState(null);
-  const [bots, setBots] = useState([]);
-  const [vote, setVote] = useState("a");
-  const [res, setRes] = useState(null);
-  const voteRef = useRef("a");
-  const botsRef = useRef([]);
-  const tokRef = useRef(0);
-  const tokenRef = useRef("");
-  const userIdRef = useRef("");
-  const t1 = useRef(null);
-  const t2 = useRef(null);
+  const [screen, setScreen]   = useState("auth");
+  const [mode, setMode]       = useState("register");
+  const [form, setForm]       = useState({ name: "", email: "", pw: "" });
+  const [err, setErr]         = useState("");
+  const [msg, setMsg]         = useState("");
+  const [busy, setBusy]       = useState(false);
+  const [user, setUser]       = useState(null);
 
-  function clrTimers() { clearInterval(t1.current); clearInterval(t2.current); clearTimeout(t1.current); }
+  // Game state
+  const [room, setRoom]       = useState(null);
+  const [roundData, setRound] = useState(null); // current DB round
+  const [vote, setVote]       = useState(null); // 'a' or 'b'
+  const [voteCounts, setVC]   = useState({ a: 0, b: 0 });
+  const [phase, setPhase]     = useState("waiting"); // waiting|voting|hidden|result
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [result, setResult]   = useState(null);
+  const [nextIn, setNextIn]   = useState(0);
 
+  const tokenRef    = useRef("");
+  const userIdRef   = useRef("");
+  const tokRef      = useRef(0);
+  const voteRef     = useRef(null);
+  const roundRef    = useRef(null);
+  const pollRef     = useRef(null);
+  const tickRef     = useRef(null);
+  const resultSaved = useRef(false);
+
+  // ── AUTH ──────────────────────────────────────────────────────────────────
   async function doRegister() {
     setErr(""); setMsg("");
     const { name, email, pw } = form;
     if (!name.trim() || !email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
     if (!email.includes("@")) { setErr("Correo no válido"); return; }
-    if (pw.length < 6) { setErr("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (pw.length < 6) { setErr("Mínimo 6 caracteres en la contraseña"); return; }
     setBusy(true);
     try {
       const data = await authCall("signup", { email, password: pw });
@@ -192,14 +214,14 @@ function App() {
       if (data.access_token) {
         tokenRef.current = data.access_token;
         userIdRef.current = data.user.id;
-        await dbInsert("profiles", { id: data.user.id, username: name, tokens: 1000 }, data.access_token);
+        await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: 1000 }, data.access_token);
         tokRef.current = 1000;
         setUser({ name, tokens: 1000 });
         setScreen("lobby");
       } else {
         setMsg("✅ Revisa tu correo para confirmar la cuenta");
       }
-    } catch(e) { setErr("Error de conexión. Inténtalo de nuevo."); }
+    } catch(e) { setErr("Error de conexión"); }
     setBusy(false);
   }
 
@@ -219,13 +241,18 @@ function App() {
         setUser({ name: profiles[0].username, tokens: profiles[0].tokens });
         setScreen("lobby");
       } else {
-        setErr("No se encontró el perfil");
+        setErr("Perfil no encontrado");
       }
-    } catch(e) { setErr("Error de conexión. Inténtalo de nuevo."); }
+    } catch(e) { setErr("Error de conexión"); }
     setBusy(false);
   }
 
-  function doLogout() { clrTimers(); tokenRef.current = ""; setUser(null); setScreen("auth"); }
+  function doLogout() {
+    stopGame();
+    tokenRef.current = "";
+    setUser(null);
+    setScreen("auth");
+  }
 
   async function saveTok(n) {
     tokRef.current = n;
@@ -233,83 +260,167 @@ function App() {
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { tokens: n }, tokenRef.current);
   }
 
-  function doVote(v) {
-    if (phase === "waiting" || phase === "result") return;
-    setVote(v); voteRef.current = v;
+  // ── ROOM / ROUND LOGIC ────────────────────────────────────────────────────
+  function stopGame() {
+    clearInterval(pollRef.current);
+    clearInterval(tickRef.current);
+    setRoom(null);
+    setRound(null);
+    setVote(null);
+    voteRef.current = null;
+    roundRef.current = null;
+    resultSaved.current = false;
+    setPhase("waiting");
+    setResult(null);
+    setVC({ a: 0, b: 0 });
   }
 
-  function enterRoom(r) {
+  async function enterRoom(r) {
     if (tokRef.current < r.cost) return;
-    clrTimers();
-    setRoom(r); setPhase("waiting"); setRes(null); setBots([]); setQ(null);
+    stopGame();
+    setRoom(r);
     setScreen("game");
-    t1.current = setTimeout(() => startRound(r), 1600);
+    setPhase("waiting");
+    // Start polling
+    await pollRound(r);
+    pollRef.current = setInterval(() => pollRound(r), 2000);
   }
 
-  function startRound(r) {
-    const q2 = rand(QUESTIONS);
-    const b = genBots(r.bots);
-    botsRef.current = b; setBots(b); setQ(q2);
-    const iv = Math.random() < .5 ? "a" : "b";
-    setVote(iv); voteRef.current = iv;
-    setPhase("active_v"); setTimeLeft(10);
-    let tv = 10;
-    t1.current = setInterval(() => {
-      tv--; setTimeLeft(tv);
-      if (tv <= 0) {
-        clearInterval(t1.current);
-        setPhase("active_h"); setTimeLeft(5);
-        let th = 5;
-        t2.current = setInterval(() => {
-          th--; setTimeLeft(th);
-          if (th <= 0) { clearInterval(t2.current); endRound(r); }
-        }, 1000);
+  async function pollRound(r) {
+    try {
+      const rows = await dbGet("game_rooms", `room_id=eq.${r.id}`, tokenRef.current);
+      const row = rows && rows[0];
+
+      if (!row) {
+        // No round exists yet — create one
+        await startNewRound(r);
+        return;
       }
-    }, 1000);
+
+      const now = Date.now();
+      const startedAt = new Date(row.started_at).getTime();
+      const elapsed = (now - startedAt) / 1000;
+
+      if (elapsed >= ROUND_TOTAL) {
+        // Round expired — start new one (first poll to detect this wins via upsert)
+        await startNewRound(r);
+        return;
+      }
+
+      roundRef.current = row;
+      setRound(row);
+
+      // Fetch live vote counts
+      const votes = await dbGet("round_votes", `round_id=eq.${row.round_id}`, tokenRef.current);
+      const cA = votes ? votes.filter(v => v.vote === "a").length : 0;
+      const cB = votes ? votes.filter(v => v.vote === "b").length : 0;
+      setVC({ a: cA, b: cB });
+
+      // Determine phase from elapsed time
+      if (elapsed < VOTE_VISIBLE) {
+        setPhase("voting");
+        setTimeLeft(Math.ceil(VOTE_VISIBLE - elapsed));
+      } else if (elapsed < VOTE_VISIBLE + VOTE_HIDDEN) {
+        setPhase("hidden");
+        setTimeLeft(Math.ceil(VOTE_VISIBLE + VOTE_HIDDEN - elapsed));
+      } else {
+        // Result phase
+        setPhase("result");
+        const remaining = Math.ceil(ROUND_TOTAL - elapsed);
+        setNextIn(remaining);
+        if (!resultSaved.current) {
+          resultSaved.current = true;
+          computeAndSaveResult(r, row, cA, cB);
+        }
+      }
+    } catch(e) { console.error(e); }
   }
 
-  function endRound(r) {
-    const pv = voteRef.current;
-    const all = [...botsRef.current.map(b => b.vote), pv];
-    const cA = all.filter(v => v === "a").length;
-    const cB = all.filter(v => v === "b").length;
-    const tot = all.length;
+  async function startNewRound(r) {
+    const q = rand(QUESTIONS);
+    const now = new Date().toISOString();
+    resultSaved.current = false;
+    voteRef.current = null;
+    setVote(null);
+    setResult(null);
+    setVC({ a: 0, b: 0 });
+
+    await dbUpsert("game_rooms", {
+      room_id: r.id,
+      round_id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+      question_a: q.a,
+      question_b: q.b,
+      started_at: now,
+      votes_a: 0,
+      votes_b: 0,
+      phase: "voting"
+    }, "room_id", tokenRef.current);
+  }
+
+  async function castVote(v) {
+    if (!roundRef.current || voteRef.current !== null) return;
+    const row = roundRef.current;
+    const elapsed = (Date.now() - new Date(row.started_at).getTime()) / 1000;
+    if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return; // too late
+
+    voteRef.current = v;
+    setVote(v);
+
+    await dbInsertRaw("round_votes", {
+      round_id: row.round_id,
+      user_id: userIdRef.current,
+      vote: v,
+      room_id: row.room_id
+    }, tokenRef.current);
+  }
+
+  function computeAndSaveResult(r, row, cA, cB) {
+    const myVote = voteRef.current;
+    if (myVote === null) {
+      setResult({ noVote: true, cA, cB, q: { a: row.question_a, b: row.question_b } });
+      return;
+    }
+
+    const total = cA + cB;
     let minority = "tie";
-    if (cA < cB) minority = "a"; else if (cB < cA) minority = "b";
+    if (cA < cB) minority = "a";
+    else if (cB < cA) minority = "b";
+
     let delta = 0, win = false, tie = minority === "tie";
+
     if (tie) {
-      // Empate: se devuelve todo, casa no cobra nada
       delta = 0;
     } else {
       const minC = minority === "a" ? cA : cB;
-      const totalPot = tot * r.cost;
+      const totalPot = total * r.cost;
       const houseCut = Math.floor(totalPot * 0.10);
       const prizePool = totalPot - houseCut;
-      if (pv === minority) {
+      if (myVote === minority) {
         win = true;
         delta = Math.floor(prizePool / minC) - r.cost;
       } else {
         delta = -r.cost;
       }
     }
+
     const newTok = Math.max(0, tokRef.current + delta);
     saveTok(newTok);
-    setRes({ win, tie, delta, cA, cB, minority, pv });
-    setPhase("result");
+    setResult({ win, tie, delta, cA, cB, minority, myVote, q: { a: row.question_a, b: row.question_b } });
   }
 
-  const lA = bots.filter(b => b.vote === "a").length + (vote === "a" ? 1 : 0);
-  const tot = bots.length + 1;
-  const pA = tot ? Math.round((lA / tot) * 100) : 50;
-  const isV = phase === "active_v";
-  const C = 2 * Math.PI * 33;
-  const off = C - (timeLeft / (isV ? 10 : 5)) * C;
-  const tc = isV ? "#fbbf24" : "#c084fc";
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  const tot = voteCounts.a + voteCounts.b;
+  const pA  = tot > 0 ? Math.round((voteCounts.a / tot) * 100) : 50;
+  const C   = 2 * Math.PI * 33;
+  const TT  = phase === "voting" ? VOTE_VISIBLE : VOTE_HIDDEN;
+  const off = C - (Math.min(timeLeft, TT) / TT) * C;
+  const tc  = phase === "voting" ? "#fbbf24" : "#c084fc";
 
   return (
     <div className="app">
       <style>{CSS}</style>
 
+      {/* ── AUTH ── */}
       {screen === "auth" && (
         <div className="auth">
           <div className="logo-main">MINORÍA<br/>MILLONARIA</div>
@@ -350,6 +461,7 @@ function App() {
         </div>
       )}
 
+      {/* ── LOBBY ── */}
       {screen === "lobby" && (
         <div className="lobby">
           <div className="topbar">
@@ -367,7 +479,7 @@ function App() {
             {ROOMS.map(r => (
               <div key={r.id}
                 className={`room-card${user?.tokens < r.cost ? " locked" : ""}`}
-                style={{ border: `1px solid ${r.color}44` }}
+                style={{ border: `1px solid ${r.color}33`, boxShadow: user?.tokens >= r.cost ? r.glow : "none" }}
                 onClick={() => enterRoom(r)}>
                 <span className="room-icon">{r.icon}</span>
                 <div className="room-name" style={{ color: r.color }}>{r.name}</div>
@@ -379,26 +491,33 @@ function App() {
         </div>
       )}
 
+      {/* ── GAME ── */}
       {screen === "game" && room && (
         <div className="game">
           <div className="game-hdr">
-            <button className="ghost-btn" onClick={() => { clrTimers(); setScreen("lobby"); }}>← Lobby</button>
-            <div className="token-pill" style={{ color: room.color, borderColor: room.color + "44", background: room.color + "15" }}>
+            <button className="ghost-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>← Lobby</button>
+            <div className="token-pill" style={{ color: room.color, borderColor: room.color + "44", background: room.color + "12" }}>
               {room.icon} {room.name} · {room.cost.toLocaleString()} 🪙
             </div>
             <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
           </div>
+
           <div className="game-card">
+
+            {/* WAITING FOR ROUND */}
             {phase === "waiting" && (
               <div className="waiting">
                 <div className="dots"><div className="dot"></div><div className="dot"></div><div className="dot"></div></div>
-                <div className="wait-txt">Preparando la ronda...</div>
+                <div className="wait-txt">Conectando a la sala...</div>
+                <div className="wait-sub">La ronda empieza pronto</div>
               </div>
             )}
-            {(phase === "active_v" || phase === "active_h") && q && (
+
+            {/* VOTING / HIDDEN */}
+            {(phase === "voting" || phase === "hidden") && roundData && (
               <div>
                 <div className="phase-tag">
-                  {phase === "active_v" ? "⚡ Votación en directo" : "🔒 Barra oculta · Decide ahora"}
+                  {phase === "voting" ? "⚡ Votación en directo" : "🔒 Barra oculta · Última oportunidad"}
                 </div>
                 <div className="timer-wrap">
                   <div className="timer-ring">
@@ -406,62 +525,86 @@ function App() {
                       <circle cx="38" cy="38" r="33" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="5" />
                       <circle cx="38" cy="38" r="33" fill="none" stroke={tc} strokeWidth="5"
                         strokeDasharray={C} strokeDashoffset={off} strokeLinecap="round"
-                        style={{ transition: "stroke-dashoffset .9s linear" }} />
+                        style={{ transition: "stroke-dashoffset .95s linear" }} />
                     </svg>
                     <div className="timer-num">{timeLeft}</div>
                   </div>
                 </div>
-                <div className="question">¿ {q.a} &nbsp;vs&nbsp; {q.b} ?</div>
+                <div className="question">¿ {roundData.question_a} &nbsp;vs&nbsp; {roundData.question_b} ?</div>
                 <div className="choices">
-                  <button className={`choice${vote === "a" ? " sel" : ""}`} onClick={() => doVote("a")}>{q.a}</button>
-                  <button className={`choice${vote === "b" ? " sel" : ""}`} onClick={() => doVote("b")}>{q.b}</button>
+                  <button
+                    className={`choice${vote === "a" ? " sel" : ""}${vote !== null ? " disabled" : ""}`}
+                    onClick={() => castVote("a")}>
+                    {roundData.question_a}
+                  </button>
+                  <button
+                    className={`choice${vote === "b" ? " sel" : ""}${vote !== null ? " disabled" : ""}`}
+                    onClick={() => castVote("b")}>
+                    {roundData.question_b}
+                  </button>
                 </div>
-                {phase === "active_v" ? (
+                {vote === null && (
+                  <div style={{ textAlign: "center", fontSize: ".78rem", color: "rgba(255,255,255,.25)", letterSpacing: ".15em", marginBottom: 12 }}>
+                    TAP PARA VOTAR
+                  </div>
+                )}
+                {phase === "voting" ? (
                   <div className="bar-wrap">
                     <div className="bar-heads">
-                      <span style={{ color: "#4ade80" }}>{q.a} · {pA}%</span>
-                      <span style={{ color: "#60a5fa" }}>{q.b} · {100 - pA}%</span>
+                      <span style={{ color: "#4ade80" }}>{roundData.question_a} · {pA}%</span>
+                      <span style={{ color: "#60a5fa" }}>{roundData.question_b} · {100 - pA}%</span>
                     </div>
                     <div className="bar-track"><div className="bar-a" style={{ width: `${pA}%` }}></div></div>
-                    <div className="bar-total">{tot} jugadores en esta ronda</div>
+                    <div className="bar-total">{tot} votos en esta ronda</div>
                   </div>
                 ) : (
-                  <div className="hidden-bar">🔒 Barra oculta — ¿cambias de opinión?</div>
+                  <div className="hidden-bar">🔒 Barra oculta — ¿te mantienes?</div>
                 )}
               </div>
             )}
-            {phase === "result" && res && q && (
+
+            {/* RESULT */}
+            {phase === "result" && result && roundData && (
               <div className="result">
-                <div className={`verdict ${res.tie ? "tie" : res.win ? "win" : "lose"}`}>
-                  {res.tie ? "EMPATE" : res.win ? "¡GANASTE!" : "PERDISTE"}
-                </div>
-                <div className="verdict-sub">
-                  {res.tie ? "Mismo número de votos en ambos lados"
-                    : res.win ? `Estabas en la minoría (${res.pv === "a" ? q.a : q.b})`
-                    : `Estabas en la mayoría (${res.pv === "a" ? q.a : q.b})`}
-                </div>
-                <div className={`token-delta ${res.delta >= 0 ? "p" : "n"}`}>
-                  {res.delta > 0 ? "+" : ""}{res.delta.toLocaleString()} 🪙
-                </div>
+                {result.noVote ? (
+                  <>
+                    <div className="verdict tie">SIN VOTO</div>
+                    <div className="verdict-sub">No votaste a tiempo esta ronda</div>
+                    <div className="token-delta z">±0 🪙</div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`verdict ${result.tie ? "tie" : result.win ? "win" : "lose"}`}>
+                      {result.tie ? "EMPATE" : result.win ? "¡GANASTE!" : "PERDISTE"}
+                    </div>
+                    <div className="verdict-sub">
+                      {result.tie
+                        ? "Mismo número de votos — se devuelve todo"
+                        : result.win
+                        ? `Estabas en la minoría (${result.myVote === "a" ? result.q.a : result.q.b})`
+                        : `Estabas en la mayoría (${result.myVote === "a" ? result.q.a : result.q.b})`}
+                    </div>
+                    <div className={`token-delta ${result.delta > 0 ? "p" : result.delta < 0 ? "n" : "z"}`}>
+                      {result.delta > 0 ? "+" : ""}{result.delta.toLocaleString()} 🪙
+                    </div>
+                  </>
+                )}
+                {/* Final bar */}
                 <div className="bar-wrap" style={{ maxWidth: 480, margin: "0 auto 8px" }}>
                   <div className="bar-heads">
-                    <span style={{ color: "#4ade80" }}>{q.a} · {Math.round(res.cA / (res.cA + res.cB) * 100)}%</span>
-                    <span style={{ color: "#60a5fa" }}>{q.b} · {Math.round(res.cB / (res.cA + res.cB) * 100)}%</span>
+                    <span style={{ color: "#4ade80" }}>{roundData.question_a} · {Math.round((result.cA || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%</span>
+                    <span style={{ color: "#60a5fa" }}>{roundData.question_b} · {Math.round((result.cB || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%</span>
                   </div>
                   <div className="bar-track">
-                    <div className="bar-a" style={{ width: `${Math.round(res.cA / (res.cA + res.cB) * 100)}%` }}></div>
+                    <div className="bar-a" style={{ width: `${Math.round((result.cA || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%` }}></div>
                   </div>
-                  <div className="bar-total">
-                    Minoría: {res.minority === "tie" ? "Empate" : res.minority === "a" ? q.a : q.b}
-                    &nbsp;·&nbsp;{res.cA + res.cB} jugadores
-                  </div>
+                  <div className="bar-total">{(result.cA || 0) + (result.cB || 0)} votos totales</div>
                 </div>
-                <div className="result-btns">
-                  <button className="r-btn" onClick={() => { clrTimers(); enterRoom(room); }}>JUGAR DE NUEVO</button>
-                  <button className="r-btn" onClick={() => { clrTimers(); setScreen("lobby"); }}>CAMBIAR SALA</button>
-                </div>
+                <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
+                <button className="r-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>CAMBIAR SALA</button>
               </div>
             )}
+
           </div>
         </div>
       )}
