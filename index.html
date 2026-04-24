@@ -17,16 +17,23 @@ html,body{min-height:100vh;background:#060609}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useRef, useEffect, useCallback } = React;
+const { useState, useRef, useEffect } = React;
 
-const SB = "https://gpwqqbudzxtnjnloqgte.supabase.co";
+const SB  = "https://gpwqqbudzxtnjnloqgte.supabase.co";
 const KEY = "sb_publishable_xzFCKnAF86_LeufT6AJBsg_EfU0rvtl";
 
-// ── API HELPERS ──────────────────────────────────────────────────────────────
 async function authCall(path, body) {
   const r = await fetch(`${SB}/auth/v1/${path}`, {
     method: "POST",
     headers: { apikey: KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+async function authPut(path, body, token) {
+  const r = await fetch(`${SB}/auth/v1/${path}`, {
+    method: "PUT",
+    headers: { apikey: KEY, "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
   return r.json();
@@ -46,12 +53,11 @@ async function dbUpsert(table, body, conflict, token) {
   return r.json();
 }
 async function dbInsertRaw(table, body, token) {
-  const r = await fetch(`${SB}/rest/v1/${table}`, {
+  return fetch(`${SB}/rest/v1/${table}`, {
     method: "POST",
     headers: { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify(body),
   });
-  return r;
 }
 async function dbUpdate(table, query, body, token) {
   await fetch(`${SB}/rest/v1/${table}?${query}`, {
@@ -61,7 +67,6 @@ async function dbUpdate(table, query, body, token) {
   });
 }
 
-// ── GAME DATA ────────────────────────────────────────────────────────────────
 const QUESTIONS = [
   { a: "🐶 Perros", b: "🐱 Gatos" }, { a: "🍕 Pizza", b: "🍔 Hamburguesa" },
   { a: "🏖️ Playa", b: "🏔️ Montaña" }, { a: "☀️ Verano", b: "❄️ Invierno" },
@@ -78,22 +83,20 @@ const QUESTIONS = [
 ];
 
 const ROOMS = [
-  { id: "starter", name: "Starter", cost: 200,   color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.3)",   icon: "🌱", desc: "Para empezar" },
-  { id: "medium",  name: "Medium",  cost: 500,   color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.3)",   icon: "⚡", desc: "Nivel medio" },
-  { id: "prime",   name: "Prime",   cost: 2000,  color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.3)",  icon: "👑", desc: "Para expertos" },
-  { id: "vip",     name: "VIP",     cost: 5000,  color: "#f97316", glow: "0 0 30px rgba(249,115,22,0.3)",   icon: "💎", desc: "Jugadores serios" },
-  { id: "elite",   name: "Elite",   cost: 10000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.3)",   icon: "💠", desc: "Élite total" },
+  { id: "starter", name: "Starter", cost: 200,   color: "#4ade80", glow: "0 0 30px rgba(74,222,128,0.3)",  icon: "🌱", desc: "Para empezar" },
+  { id: "medium",  name: "Medium",  cost: 500,   color: "#60a5fa", glow: "0 0 30px rgba(96,165,250,0.3)",  icon: "⚡", desc: "Nivel medio" },
+  { id: "prime",   name: "Prime",   cost: 2000,  color: "#c084fc", glow: "0 0 30px rgba(192,132,252,0.3)", icon: "👑", desc: "Para expertos" },
+  { id: "vip",     name: "VIP",     cost: 5000,  color: "#f97316", glow: "0 0 30px rgba(249,115,22,0.3)",  icon: "💎", desc: "Jugadores serios" },
+  { id: "elite",   name: "Elite",   cost: 10000, color: "#fbbf24", glow: "0 0 30px rgba(251,191,36,0.3)",  icon: "💠", desc: "Élite total" },
 ];
 
-// Round timing (seconds)
-const VOTE_VISIBLE  = 10; // bar visible
-const VOTE_HIDDEN   = 5;  // bar hidden
-const RESULT_TIME   = 6;  // show result
-const ROUND_TOTAL   = VOTE_VISIBLE + VOTE_HIDDEN + RESULT_TIME; // 21s
+const VOTE_VISIBLE = 10;
+const VOTE_HIDDEN  = 5;
+const RESULT_TIME  = 6;
+const ROUND_TOTAL  = VOTE_VISIBLE + VOTE_HIDDEN + RESULT_TIME;
 
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-// ── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .app{min-height:100vh;background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(99,102,241,.07) 0,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(251,191,36,.05) 0,transparent 60%),#060609}
@@ -110,27 +113,29 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .btn-gold:hover{opacity:.88}
 .btn-gold:disabled{opacity:.4;cursor:not-allowed}
 .auth-switch{text-align:center;margin-top:20px;font-size:.85rem;color:rgba(255,255,255,.35)}
-.auth-switch span{color:#fbbf24;cursor:pointer;font-weight:700}
 .err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.28);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#fca5a5;margin-bottom:14px;text-align:center}
 .ok{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.28);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#86efac;margin-bottom:14px;text-align:center}
-.lobby{min-height:100vh;padding:28px 24px}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:36px}
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:36px;flex-wrap:wrap;gap:10px}
 .topbar-logo{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .token-pill{display:flex;align-items:center;gap:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.22);border-radius:40px;padding:8px 18px;font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:#fbbf24}
 .ghost-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:8px 14px;color:rgba(255,255,255,.45);font-family:'Rajdhani',sans-serif;font-size:.85rem;cursor:pointer;font-weight:600;transition:all .2s}
 .ghost-btn:hover{color:#fff;background:rgba(255,255,255,.07)}
+/* LOBBY */
+.lobby{min-height:100vh;padding:28px 24px}
 .lobby-hero{text-align:center;margin-bottom:48px}
 .lobby-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.4rem,4vw,2.2rem);font-weight:900;color:#fff;margin-bottom:8px}
 .lobby-hint{color:rgba(255,255,255,.35);font-size:.95rem;font-weight:500}
-.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;max-width:1100px;margin:0 auto}
-.room-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:28px 20px;cursor:pointer;transition:all .3s;text-align:center}
+.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;max-width:1100px;margin:0 auto}
+.room-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:26px 18px;cursor:pointer;transition:all .3s;text-align:center}
 .room-card:hover{transform:translateY(-5px)}
 .room-card.locked{opacity:.3;cursor:not-allowed;pointer-events:none}
 .room-icon{font-size:2.4rem;margin-bottom:10px;display:block}
-.room-name{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px;letter-spacing:.1em}
-.room-desc{font-size:.82rem;color:rgba(255,255,255,.35);margin-bottom:16px;font-weight:500}
-.room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:8px 16px;font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:#fff;display:inline-block}
+.room-name{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;margin-bottom:4px;letter-spacing:.1em}
+.room-desc{font-size:.8rem;color:rgba(255,255,255,.35);margin-bottom:14px;font-weight:500}
+.room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:7px 14px;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:#fff;display:inline-block}
+/* GAME */
 .game{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:680px;margin-bottom:28px;flex-wrap:wrap;gap:10px}
 .game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:36px;width:100%;max-width:680px}
@@ -139,7 +144,7 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .timer-ring{position:relative;width:76px;height:76px}
 .timer-ring svg{transform:rotate(-90deg)}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.45rem;font-weight:900;color:#fff}
-.question{font-size:clamp(1.1rem,3vw,1.55rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
+.question{font-size:clamp(1.1rem,3vw,1.5rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
 .choice{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 12px;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;color:rgba(255,255,255,.8);cursor:pointer;transition:all .22s;text-align:center;line-height:1.3}
 .choice:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
@@ -158,8 +163,6 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .dot:nth-child(2){animation-delay:.22s}.dot:nth-child(3){animation-delay:.44s}
 @keyframes db{0%,80%,100%{transform:translateY(0);opacity:.25}40%{transform:translateY(-8px);opacity:1}}
 .wait-txt{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700;margin-bottom:8px}
-.wait-sub{font-size:.82rem;color:rgba(255,255,255,.2);font-weight:500}
-.players-count{font-family:'Orbitron',sans-serif;font-size:.75rem;color:rgba(255,255,255,.25);text-align:center;margin-top:12px;letter-spacing:.1em}
 .result{text-align:center}
 .verdict{font-family:'Orbitron',sans-serif;font-size:clamp(1.8rem,5vw,2.8rem);font-weight:900;margin-bottom:10px}
 .verdict.win{color:#4ade80}.verdict.lose{color:#f87171}.verdict.tie{color:#fbbf24}
@@ -169,9 +172,35 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .next-round{font-size:.78rem;letter-spacing:.15em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-top:16px;font-weight:700}
 .r-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 24px;color:#fff;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.1em;margin-top:16px}
 .r-btn:hover{background:rgba(255,255,255,.1)}
+/* PROFILE */
+.profile{min-height:100vh;padding:28px 24px}
+.profile-hero{display:flex;align-items:center;gap:20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:28px;margin-bottom:24px;max-width:800px}
+.avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:900;color:#0a0a0f;flex-shrink:0}
+.profile-name{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;margin-bottom:4px}
+.profile-email{font-size:.85rem;color:rgba(255,255,255,.35);font-weight:500}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;max-width:800px}
+.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px;text-align:center}
+.stat-val{font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900;color:#fbbf24;margin-bottom:4px}
+.stat-lbl{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700}
+.section-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px;margin-top:8px;max-width:800px}
+.history-list{display:flex;flex-direction:column;gap:8px;max-width:800px;margin-bottom:28px}
+.history-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 18px;gap:10px;flex-wrap:wrap}
+.history-q{font-size:.9rem;font-weight:600;color:rgba(255,255,255,.7);flex:1;min-width:140px}
+.history-room{font-size:.72rem;letter-spacing:.1em;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase}
+.history-delta{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700}
+.history-delta.p{color:#4ade80}.history-delta.n{color:#f87171}.history-delta.z{color:rgba(255,255,255,.3)}
+.pw-section{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:24px;max-width:800px;margin-bottom:24px}
+.pw-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.2em;text-transform:uppercase;margin-bottom:18px}
+.pw-row{display:flex;gap:12px;flex-wrap:wrap}
+.pw-row .field{flex:1;min-width:180px;margin-bottom:0}
+.btn-sm{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:10px;padding:13px 22px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:opacity .2s;white-space:nowrap;margin-top:24px}
+.btn-sm:hover{opacity:.88}
+.btn-sm:disabled{opacity:.4;cursor:not-allowed}
+.logout-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:13px 22px;color:#fca5a5;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;max-width:800px;width:100%}
+.logout-btn:hover{background:rgba(239,68,68,.18)}
+.empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
 
-// ── APP ──────────────────────────────────────────────────────────────────────
 function App() {
   const [screen, setScreen]   = useState("auth");
   const [mode, setMode]       = useState("register");
@@ -180,16 +209,24 @@ function App() {
   const [msg, setMsg]         = useState("");
   const [busy, setBusy]       = useState(false);
   const [user, setUser]       = useState(null);
+  const [userEmail, setEmail] = useState("");
 
-  // Game state
+  // Game
   const [room, setRoom]       = useState(null);
-  const [roundData, setRound] = useState(null); // current DB round
-  const [vote, setVote]       = useState(null); // 'a' or 'b'
+  const [roundData, setRound] = useState(null);
+  const [vote, setVote]       = useState(null);
   const [voteCounts, setVC]   = useState({ a: 0, b: 0 });
-  const [phase, setPhase]     = useState("waiting"); // waiting|voting|hidden|result
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [phase, setPhase]     = useState("waiting");
+  const [timeLeft, setTL]     = useState(0);
   const [result, setResult]   = useState(null);
   const [nextIn, setNextIn]   = useState(0);
+
+  // Profile
+  const [history, setHistory]   = useState([]);
+  const [pwForm, setPwForm]     = useState({ pw1: "", pw2: "" });
+  const [pwErr, setPwErr]       = useState("");
+  const [pwOk, setPwOk]         = useState("");
+  const [pwBusy, setPwBusy]     = useState(false);
 
   const tokenRef    = useRef("");
   const userIdRef   = useRef("");
@@ -197,7 +234,6 @@ function App() {
   const voteRef     = useRef(null);
   const roundRef    = useRef(null);
   const pollRef     = useRef(null);
-  const tickRef     = useRef(null);
   const resultSaved = useRef(false);
 
   // ── AUTH ──────────────────────────────────────────────────────────────────
@@ -206,7 +242,7 @@ function App() {
     const { name, email, pw } = form;
     if (!name.trim() || !email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
     if (!email.includes("@")) { setErr("Correo no válido"); return; }
-    if (pw.length < 6) { setErr("Mínimo 6 caracteres en la contraseña"); return; }
+    if (pw.length < 6) { setErr("Mínimo 6 caracteres"); return; }
     setBusy(true);
     try {
       const data = await authCall("signup", { email, password: pw });
@@ -216,6 +252,7 @@ function App() {
         userIdRef.current = data.user.id;
         await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: 1000 }, data.access_token);
         tokRef.current = 1000;
+        setEmail(email);
         setUser({ name, tokens: 1000 });
         setScreen("lobby");
       } else {
@@ -238,6 +275,7 @@ function App() {
       const profiles = await dbGet("profiles", `id=eq.${data.user.id}`, data.access_token);
       if (profiles && profiles[0]) {
         tokRef.current = profiles[0].tokens;
+        setEmail(email);
         setUser({ name: profiles[0].username, tokens: profiles[0].tokens });
         setScreen("lobby");
       } else {
@@ -251,6 +289,7 @@ function App() {
     stopGame();
     tokenRef.current = "";
     setUser(null);
+    setEmail("");
     setScreen("auth");
   }
 
@@ -260,28 +299,50 @@ function App() {
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { tokens: n }, tokenRef.current);
   }
 
-  // ── ROOM / ROUND LOGIC ────────────────────────────────────────────────────
+  // ── PROFILE ───────────────────────────────────────────────────────────────
+  async function loadProfile() {
+    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&order=created_at.desc&limit=20`, tokenRef.current);
+    setHistory(Array.isArray(hist) ? hist : []);
+    setScreen("profile");
+  }
+
+  async function changePassword() {
+    setPwErr(""); setPwOk("");
+    if (!pwForm.pw1 || !pwForm.pw2) { setPwErr("Completa los dos campos"); return; }
+    if (pwForm.pw1 !== pwForm.pw2) { setPwErr("Las contraseñas no coinciden"); return; }
+    if (pwForm.pw1.length < 6) { setPwErr("Mínimo 6 caracteres"); return; }
+    setPwBusy(true);
+    try {
+      const data = await authPut("user", { password: pwForm.pw1 }, tokenRef.current);
+      if (data.error) { setPwErr(data.error_description || data.error); }
+      else { setPwOk("✅ Contraseña actualizada"); setPwForm({ pw1: "", pw2: "" }); }
+    } catch(e) { setPwErr("Error de conexión"); }
+    setPwBusy(false);
+  }
+
+  // Stats from history
+  const stats = {
+    total:   history.length,
+    wins:    history.filter(h => h.result === "win").length,
+    losses:  history.filter(h => h.result === "lose").length,
+    ties:    history.filter(h => h.result === "tie").length,
+    winPct:  history.length ? Math.round(history.filter(h => h.result === "win").length / history.length * 100) : 0,
+    earned:  history.reduce((s, h) => s + (h.delta > 0 ? h.delta : 0), 0),
+  };
+
+  // ── GAME ──────────────────────────────────────────────────────────────────
   function stopGame() {
     clearInterval(pollRef.current);
-    clearInterval(tickRef.current);
-    setRoom(null);
-    setRound(null);
-    setVote(null);
-    voteRef.current = null;
-    roundRef.current = null;
+    setRoom(null); setRound(null); setVote(null);
+    voteRef.current = null; roundRef.current = null;
     resultSaved.current = false;
-    setPhase("waiting");
-    setResult(null);
-    setVC({ a: 0, b: 0 });
+    setPhase("waiting"); setResult(null); setVC({ a: 0, b: 0 });
   }
 
   async function enterRoom(r) {
     if (tokRef.current < r.cost) return;
     stopGame();
-    setRoom(r);
-    setScreen("game");
-    setPhase("waiting");
-    // Start polling
+    setRoom(r); setScreen("game"); setPhase("waiting");
     await pollRound(r);
     pollRef.current = setInterval(() => pollRound(r), 2000);
   }
@@ -290,47 +351,24 @@ function App() {
     try {
       const rows = await dbGet("game_rooms", `room_id=eq.${r.id}`, tokenRef.current);
       const row = rows && rows[0];
-
-      if (!row) {
-        // No round exists yet — create one
-        await startNewRound(r);
-        return;
-      }
-
-      const now = Date.now();
-      const startedAt = new Date(row.started_at).getTime();
-      const elapsed = (now - startedAt) / 1000;
-
-      if (elapsed >= ROUND_TOTAL) {
-        // Round expired — start new one (first poll to detect this wins via upsert)
-        await startNewRound(r);
-        return;
-      }
-
-      roundRef.current = row;
-      setRound(row);
-
-      // Fetch live vote counts
+      if (!row) { await startNewRound(r); return; }
+      const elapsed = (Date.now() - new Date(row.started_at).getTime()) / 1000;
+      if (elapsed >= ROUND_TOTAL) { await startNewRound(r); return; }
+      roundRef.current = row; setRound(row);
       const votes = await dbGet("round_votes", `round_id=eq.${row.round_id}`, tokenRef.current);
       const cA = votes ? votes.filter(v => v.vote === "a").length : 0;
       const cB = votes ? votes.filter(v => v.vote === "b").length : 0;
       setVC({ a: cA, b: cB });
-
-      // Determine phase from elapsed time
       if (elapsed < VOTE_VISIBLE) {
-        setPhase("voting");
-        setTimeLeft(Math.ceil(VOTE_VISIBLE - elapsed));
+        setPhase("voting"); setTL(Math.ceil(VOTE_VISIBLE - elapsed));
       } else if (elapsed < VOTE_VISIBLE + VOTE_HIDDEN) {
-        setPhase("hidden");
-        setTimeLeft(Math.ceil(VOTE_VISIBLE + VOTE_HIDDEN - elapsed));
+        setPhase("hidden"); setTL(Math.ceil(VOTE_VISIBLE + VOTE_HIDDEN - elapsed));
       } else {
-        // Result phase
         setPhase("result");
-        const remaining = Math.ceil(ROUND_TOTAL - elapsed);
-        setNextIn(remaining);
+        setNextIn(Math.ceil(ROUND_TOTAL - elapsed));
         if (!resultSaved.current) {
           resultSaved.current = true;
-          computeAndSaveResult(r, row, cA, cB);
+          computeResult(r, row, cA, cB);
         }
       }
     } catch(e) { console.error(e); }
@@ -338,74 +376,75 @@ function App() {
 
   async function startNewRound(r) {
     const q = rand(QUESTIONS);
-    const now = new Date().toISOString();
     resultSaved.current = false;
-    voteRef.current = null;
-    setVote(null);
-    setResult(null);
-    setVC({ a: 0, b: 0 });
-
+    voteRef.current = null; setVote(null); setResult(null); setVC({ a: 0, b: 0 });
     await dbUpsert("game_rooms", {
       room_id: r.id,
-      round_id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
-      question_a: q.a,
-      question_b: q.b,
-      started_at: now,
-      votes_a: 0,
-      votes_b: 0,
-      phase: "voting"
+      round_id: (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)),
+      question_a: q.a, question_b: q.b,
+      started_at: new Date().toISOString(),
+      votes_a: 0, votes_b: 0, phase: "voting"
     }, "room_id", tokenRef.current);
   }
 
   async function castVote(v) {
     if (!roundRef.current || voteRef.current !== null) return;
-    const row = roundRef.current;
-    const elapsed = (Date.now() - new Date(row.started_at).getTime()) / 1000;
-    if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return; // too late
-
-    voteRef.current = v;
-    setVote(v);
-
+    const elapsed = (Date.now() - new Date(roundRef.current.started_at).getTime()) / 1000;
+    if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return;
+    voteRef.current = v; setVote(v);
     await dbInsertRaw("round_votes", {
-      round_id: row.round_id,
+      round_id: roundRef.current.round_id,
       user_id: userIdRef.current,
       vote: v,
-      room_id: row.room_id
+      room_id: roundRef.current.room_id
     }, tokenRef.current);
   }
 
-  function computeAndSaveResult(r, row, cA, cB) {
+  async function computeResult(r, row, cA, cB) {
     const myVote = voteRef.current;
-    if (myVote === null) {
-      setResult({ noVote: true, cA, cB, q: { a: row.question_a, b: row.question_b } });
-      return;
-    }
-
     const total = cA + cB;
     let minority = "tie";
     if (cA < cB) minority = "a";
     else if (cB < cA) minority = "b";
-
     let delta = 0, win = false, tie = minority === "tie";
+    let resultStr = myVote === null ? "no_vote" : "lose";
 
-    if (tie) {
-      delta = 0;
-    } else {
-      const minC = minority === "a" ? cA : cB;
-      const totalPot = total * r.cost;
-      const houseCut = Math.floor(totalPot * 0.10);
-      const prizePool = totalPot - houseCut;
-      if (myVote === minority) {
-        win = true;
-        delta = Math.floor(prizePool / minC) - r.cost;
+    if (myVote !== null) {
+      if (tie) {
+        delta = 0; resultStr = "tie";
       } else {
-        delta = -r.cost;
+        const minC = minority === "a" ? cA : cB;
+        const prizePool = Math.floor(total * r.cost * 0.90);
+        if (myVote === minority) {
+          win = true; resultStr = "win";
+          delta = Math.floor(prizePool / minC) - r.cost;
+        } else {
+          delta = -r.cost; resultStr = "lose";
+        }
       }
     }
 
     const newTok = Math.max(0, tokRef.current + delta);
-    saveTok(newTok);
-    setResult({ win, tie, delta, cA, cB, minority, myVote, q: { a: row.question_a, b: row.question_b } });
+    await saveTok(newTok);
+    setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b } });
+
+    // Save to history
+    if (myVote !== null) {
+      await dbInsertRaw("match_history", {
+        user_id: userIdRef.current,
+        room_id: r.id,
+        round_id: row.round_id,
+        vote: myVote,
+        result: resultStr,
+        delta,
+        tokens_after: newTok,
+        question_a: row.question_a,
+        question_b: row.question_b,
+        minority,
+        votes_a: cA,
+        votes_b: cB
+      }, tokenRef.current);
+    }
   }
 
   // ── RENDER ────────────────────────────────────────────────────────────────
@@ -415,6 +454,9 @@ function App() {
   const TT  = phase === "voting" ? VOTE_VISIBLE : VOTE_HIDDEN;
   const off = C - (Math.min(timeLeft, TT) / TT) * C;
   const tc  = phase === "voting" ? "#fbbf24" : "#c084fc";
+
+  const roomName = r => ROOMS.find(x => x.id === r)?.name || r;
+  const roomColor = r => ROOMS.find(x => x.id === r)?.color || "#fff";
 
   return (
     <div className="app">
@@ -447,8 +489,7 @@ function App() {
                 <input type="password" placeholder="••••••••" value={form.pw}
                   onChange={e => setForm(f => ({ ...f, pw: e.target.value }))} />
               </div>
-              <button className="btn-gold" disabled={busy}
-                onClick={mode === "register" ? doRegister : doLogin}>
+              <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
                 {busy ? "CARGANDO..." : mode === "register" ? "REGISTRARSE · 1000 🪙 GRATIS" : "ENTRAR AL JUEGO"}
               </button>
             </div>
@@ -468,6 +509,7 @@ function App() {
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
               <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={loadProfile}>👤 Mi perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
             </div>
           </div>
@@ -501,24 +543,16 @@ function App() {
             </div>
             <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
           </div>
-
           <div className="game-card">
-
-            {/* WAITING FOR ROUND */}
             {phase === "waiting" && (
               <div className="waiting">
                 <div className="dots"><div className="dot"></div><div className="dot"></div><div className="dot"></div></div>
                 <div className="wait-txt">Conectando a la sala...</div>
-                <div className="wait-sub">La ronda empieza pronto</div>
               </div>
             )}
-
-            {/* VOTING / HIDDEN */}
             {(phase === "voting" || phase === "hidden") && roundData && (
               <div>
-                <div className="phase-tag">
-                  {phase === "voting" ? "⚡ Votación en directo" : "🔒 Barra oculta · Última oportunidad"}
-                </div>
+                <div className="phase-tag">{phase === "voting" ? "⚡ Votación en directo" : "🔒 Barra oculta · Última oportunidad"}</div>
                 <div className="timer-wrap">
                   <div className="timer-ring">
                     <svg width="76" height="76" viewBox="0 0 76 76">
@@ -532,29 +566,17 @@ function App() {
                 </div>
                 <div className="question">¿ {roundData.question_a} &nbsp;vs&nbsp; {roundData.question_b} ?</div>
                 <div className="choices">
-                  <button
-                    className={`choice${vote === "a" ? " sel" : ""}${vote !== null ? " disabled" : ""}`}
-                    onClick={() => castVote("a")}>
-                    {roundData.question_a}
-                  </button>
-                  <button
-                    className={`choice${vote === "b" ? " sel" : ""}${vote !== null ? " disabled" : ""}`}
-                    onClick={() => castVote("b")}>
-                    {roundData.question_b}
-                  </button>
+                  <button className={`choice${vote === "a" ? " sel" : ""}${vote !== null ? " disabled" : ""}`} onClick={() => castVote("a")}>{roundData.question_a}</button>
+                  <button className={`choice${vote === "b" ? " sel" : ""}${vote !== null ? " disabled" : ""}`} onClick={() => castVote("b")}>{roundData.question_b}</button>
                 </div>
-                {vote === null && (
-                  <div style={{ textAlign: "center", fontSize: ".78rem", color: "rgba(255,255,255,.25)", letterSpacing: ".15em", marginBottom: 12 }}>
-                    TAP PARA VOTAR
-                  </div>
-                )}
+                {vote === null && <div style={{textAlign:"center",fontSize:".78rem",color:"rgba(255,255,255,.25)",letterSpacing:".15em",marginBottom:12}}>TAP PARA VOTAR</div>}
                 {phase === "voting" ? (
                   <div className="bar-wrap">
                     <div className="bar-heads">
-                      <span style={{ color: "#4ade80" }}>{roundData.question_a} · {pA}%</span>
-                      <span style={{ color: "#60a5fa" }}>{roundData.question_b} · {100 - pA}%</span>
+                      <span style={{color:"#4ade80"}}>{roundData.question_a} · {pA}%</span>
+                      <span style={{color:"#60a5fa"}}>{roundData.question_b} · {100-pA}%</span>
                     </div>
-                    <div className="bar-track"><div className="bar-a" style={{ width: `${pA}%` }}></div></div>
+                    <div className="bar-track"><div className="bar-a" style={{width:`${pA}%`}}></div></div>
                     <div className="bar-total">{tot} votos en esta ronda</div>
                   </div>
                 ) : (
@@ -562,14 +584,12 @@ function App() {
                 )}
               </div>
             )}
-
-            {/* RESULT */}
             {phase === "result" && result && roundData && (
               <div className="result">
                 {result.noVote ? (
                   <>
                     <div className="verdict tie">SIN VOTO</div>
-                    <div className="verdict-sub">No votaste a tiempo esta ronda</div>
+                    <div className="verdict-sub">No votaste a tiempo</div>
                     <div className="token-delta z">±0 🪙</div>
                   </>
                 ) : (
@@ -578,34 +598,130 @@ function App() {
                       {result.tie ? "EMPATE" : result.win ? "¡GANASTE!" : "PERDISTE"}
                     </div>
                     <div className="verdict-sub">
-                      {result.tie
-                        ? "Mismo número de votos — se devuelve todo"
-                        : result.win
-                        ? `Estabas en la minoría (${result.myVote === "a" ? result.q.a : result.q.b})`
-                        : `Estabas en la mayoría (${result.myVote === "a" ? result.q.a : result.q.b})`}
+                      {result.tie ? "Mismo número de votos — se devuelve todo"
+                        : result.win ? `Minoría: ${result.myVote === "a" ? result.q.a : result.q.b}`
+                        : `Mayoría: ${result.myVote === "a" ? result.q.a : result.q.b}`}
                     </div>
                     <div className={`token-delta ${result.delta > 0 ? "p" : result.delta < 0 ? "n" : "z"}`}>
                       {result.delta > 0 ? "+" : ""}{result.delta.toLocaleString()} 🪙
                     </div>
                   </>
                 )}
-                {/* Final bar */}
-                <div className="bar-wrap" style={{ maxWidth: 480, margin: "0 auto 8px" }}>
+                <div className="bar-wrap" style={{maxWidth:480,margin:"0 auto 8px"}}>
                   <div className="bar-heads">
-                    <span style={{ color: "#4ade80" }}>{roundData.question_a} · {Math.round((result.cA || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%</span>
-                    <span style={{ color: "#60a5fa" }}>{roundData.question_b} · {Math.round((result.cB || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%</span>
+                    <span style={{color:"#4ade80"}}>{roundData.question_a} · {Math.round((result.cA||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%</span>
+                    <span style={{color:"#60a5fa"}}>{roundData.question_b} · {Math.round((result.cB||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%</span>
                   </div>
-                  <div className="bar-track">
-                    <div className="bar-a" style={{ width: `${Math.round((result.cA || 0) / Math.max((result.cA || 0) + (result.cB || 0), 1) * 100)}%` }}></div>
-                  </div>
-                  <div className="bar-total">{(result.cA || 0) + (result.cB || 0)} votos totales</div>
+                  <div className="bar-track"><div className="bar-a" style={{width:`${Math.round((result.cA||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%`}}></div></div>
+                  <div className="bar-total">{(result.cA||0)+(result.cB||0)} votos totales</div>
                 </div>
                 <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
                 <button className="r-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>CAMBIAR SALA</button>
               </div>
             )}
-
           </div>
+        </div>
+      )}
+
+      {/* ── PROFILE ── */}
+      {screen === "profile" && (
+        <div className="profile">
+          <div className="topbar">
+            <div className="topbar-logo">MI PERFIL</div>
+            <div className="topbar-right">
+              <div className="token-pill">🪙 {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
+            </div>
+          </div>
+
+          {/* Avatar + info */}
+          <div className="profile-hero">
+            <div className="avatar">{user?.name?.[0]?.toUpperCase() || "?"}</div>
+            <div>
+              <div className="profile-name">{user?.name}</div>
+              <div className="profile-email">{userEmail}</div>
+              <div style={{marginTop:8,fontSize:".8rem",color:"rgba(255,255,255,.3)",fontWeight:600}}>
+                🪙 {user?.tokens?.toLocaleString()} tokens
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="section-title">Estadísticas</div>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-val">{stats.total}</div>
+              <div className="stat-lbl">Partidas</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{color:"#4ade80"}}>{stats.wins}</div>
+              <div className="stat-lbl">Victorias</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{color:"#f87171"}}>{stats.losses}</div>
+              <div className="stat-lbl">Derrotas</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{color:"#fbbf24"}}>{stats.ties}</div>
+              <div className="stat-lbl">Empates</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val">{stats.winPct}%</div>
+              <div className="stat-lbl">% Victorias</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{color:"#4ade80"}}>+{stats.earned.toLocaleString()}</div>
+              <div className="stat-lbl">Ganado total</div>
+            </div>
+          </div>
+
+          {/* History */}
+          <div className="section-title">Últimas partidas</div>
+          <div className="history-list">
+            {history.length === 0 ? (
+              <div className="empty-hist">Aún no has jugado ninguna partida</div>
+            ) : history.map(h => (
+              <div key={h.id} className="history-row">
+                <div>
+                  <div className="history-q">{h.question_a} vs {h.question_b}</div>
+                  <div className="history-room" style={{color: roomColor(h.room_id)}}>{roomName(h.room_id)}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div className={`history-delta ${h.delta > 0 ? "p" : h.delta < 0 ? "n" : "z"}`}>
+                    {h.delta > 0 ? "+" : ""}{h.delta?.toLocaleString()} 🪙
+                  </div>
+                  <div style={{fontSize:".72rem",color:"rgba(255,255,255,.25)",marginTop:3}}>
+                    {h.result === "win" ? "✅ Victoria" : h.result === "lose" ? "❌ Derrota" : h.result === "tie" ? "🤝 Empate" : "⏭ Sin voto"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Change password */}
+          <div className="pw-section">
+            <div className="pw-title">Cambiar contraseña</div>
+            {pwErr && <div className="err">{pwErr}</div>}
+            {pwOk  && <div className="ok">{pwOk}</div>}
+            <div className="pw-row">
+              <div className="field">
+                <label>Nueva contraseña</label>
+                <input type="password" placeholder="••••••••" value={pwForm.pw1}
+                  onChange={e => setPwForm(f => ({ ...f, pw1: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Repetir contraseña</label>
+                <input type="password" placeholder="••••••••" value={pwForm.pw2}
+                  onChange={e => setPwForm(f => ({ ...f, pw2: e.target.value }))} />
+              </div>
+            </div>
+            <button className="btn-sm" disabled={pwBusy} onClick={changePassword}>
+              {pwBusy ? "GUARDANDO..." : "GUARDAR CONTRASEÑA"}
+            </button>
+          </div>
+
+          {/* Logout */}
+          <button className="logout-btn" onClick={doLogout}>CERRAR SESIÓN</button>
         </div>
       )}
     </div>
