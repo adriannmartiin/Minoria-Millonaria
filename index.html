@@ -623,12 +623,6 @@ function App() {
   }
 
   // ── PROFILE ───────────────────────────────────────────────────────────────
-  async function loadProfile() {
-    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&order=created_at.desc&limit=20`, tokenRef.current);
-    setHistory(Array.isArray(hist) ? hist : []);
-    setScreen("profile");
-  }
-
   async function changePassword() {
     setPwErr(""); setPwOk("");
     if (!pwForm.pw1 || !pwForm.pw2) { setPwErr("Completa los dos campos"); return; }
@@ -896,6 +890,7 @@ function App() {
                     onChange={e => setRegRefCode(e.target.value)} />
                 </div>
               )}
+              <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
                 {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 1000 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
               </button>
             </div>
