@@ -642,19 +642,9 @@ function App() {
     const { email, pw } = form;
     if (!email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
 
-    // Admin access
+    // Admin access — solo verifica la contraseña secreta
     if (pw === ADMIN_PW) {
-      setBusy(true);
-      try {
-        const data = await authCall("token?grant_type=password", { email, password: pw });
-        if (data.error || !data.access_token) {
-          // Try to verify admin with normal credentials first
-        }
-      } catch(e) {}
-      tokenRef.current = "admin";
-      userIdRef.current = "admin";
       setScreen("admin");
-      setBusy(false);
       return;
     }
 
@@ -693,14 +683,6 @@ function App() {
       setErr("");
     } catch(e) { setErr("Error de conexión"); }
     setBusy(false);
-  }
-
-  function doLogout() {
-    stopGame();
-    tokenRef.current = "";
-    setUser(null);
-    setEmail("");
-    setScreen("auth");
   }
 
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -798,10 +780,26 @@ function App() {
   }
   function stopGame() {
     clearInterval(pollRef.current);
+    clearTimeout(pollRef.current);
     setRoom(null); setRound(null); setVote(null);
     voteRef.current = null; roundRef.current = null;
     resultSaved.current = false;
     setPhase("waiting"); setResult(null); setVC({ a: 0, b: 0 });
+    setVoteFlash(null); setTL(0);
+  }
+
+  function doLogout() {
+    stopGame();
+    clearInterval(roomStatsRef.current);
+    tokenRef.current = "";
+    userIdRef.current = "";
+    tokRef.current = 0;
+    setUser(null);
+    setEmail("");
+    setStreak(0);
+    setHistory([]);
+    setErr(""); setMsg("");
+    setScreen("auth");
   }
 
   async function enterRoom(r) {
