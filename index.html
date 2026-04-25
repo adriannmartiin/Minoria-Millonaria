@@ -330,38 +330,6 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 /* HISTORY EXPAND */
 .hist-expand-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;color:rgba(255,255,255,.35);font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;width:100%;letter-spacing:.1em;margin-top:4px;transition:all .2s;max-width:800px}
 .hist-expand-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.6)}
-/* REDEMPTION */
-.redeem{min-height:100vh;padding:28px 24px;max-width:800px;margin:0 auto}
-.redeem-banner{background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.05));border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:20px 24px;margin-bottom:32px;display:flex;align-items:center;gap:16px}
-.redeem-banner-icon{font-size:2rem;flex-shrink:0}
-.redeem-banner-title{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:900;color:#f87171;margin-bottom:4px;letter-spacing:.06em}
-.redeem-banner-sub{font-size:.82rem;color:rgba(255,255,255,.4);line-height:1.6}
-.redeem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
-.redeem-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:24px 16px;text-align:center;transition:all .2s;opacity:.5;cursor:not-allowed}
-.redeem-eur{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:6px}
-.redeem-tokens{font-size:.82rem;color:rgba(255,255,255,.4);margin-bottom:8px;font-weight:600}
-.redeem-ratio{font-size:.7rem;color:#4ade80;font-weight:700;letter-spacing:.08em}
-.redeem-lock{font-size:.7rem;color:rgba(255,255,255,.2);margin-top:10px;letter-spacing:.08em;font-weight:700}
-.redeem-info{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px;font-size:.82rem;color:rgba(255,255,255,.35);line-height:1.8}
-.redeem-info strong{color:rgba(255,255,255,.6)}
-/* MISSIONS */
-.missions{min-height:100vh;padding:28px 24px}
-.mission-list{display:flex;flex-direction:column;gap:10px;max-width:800px;margin:0 auto}
-.mission-row{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px}
-.mission-row.done{border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.04)}
-.mission-row.claimed{opacity:.5}
-.mission-icon{font-size:1.6rem;flex-shrink:0}
-.mission-info{flex:1}
-.mission-title{font-size:.88rem;font-weight:700;color:#fff;margin-bottom:3px}
-.mission-desc{font-size:.75rem;color:rgba(255,255,255,.35);font-weight:500}
-.mission-prog{height:5px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden;margin-top:8px}
-.mission-prog-bar{height:100%;background:linear-gradient(90deg,#fbbf24,#d97706);border-radius:100px;transition:width .6s ease}
-.mission-prog-bar.done{background:linear-gradient(90deg,#4ade80,#16a34a)}
-.mission-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
-.mission-reward{font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;color:#4ade80}
-.mission-claim-btn{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:8px;padding:8px 14px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.62rem;font-weight:700;cursor:pointer;letter-spacing:.08em}
-.mission-done-tag{font-size:.7rem;color:#4ade80;font-weight:700;letter-spacing:.1em}
-.mission-week{font-family:'Orbitron',sans-serif;font-size:.7rem;color:rgba(255,255,255,.25);letter-spacing:.15em;text-align:center;margin-bottom:16px}
 /* SESSION EXPIRED */
 .session-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:99999;padding:24px}
 .session-card{background:#0d0d18;border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:44px 36px;max-width:420px;width:100%;text-align:center}
@@ -479,7 +447,7 @@ function AdminStats({ sbUrl, sbKey }) {
       const w1  = new Date(Date.now()-604800000).toISOString();
       const m1  = new Date(Date.now()-2592000000).toISOString();
       const [profiles, history, referrals, adViews] = await Promise.all([
-        fetch(`${sbUrl}/rest/v1/profiles?select=id,username,tokens,created_at&order=tokens.desc`,{headers:{apikey:sbKey}}).then(r=>r.json()),
+        fetch(`${sbUrl}/rest/v1/profiles?select=id,tokens,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
         fetch(`${sbUrl}/rest/v1/match_history?select=room_id,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
         fetch(`${sbUrl}/rest/v1/referrals?select=id`,{headers:{apikey:sbKey}}).then(r=>r.json()),
         fetch(`${sbUrl}/rest/v1/ad_views?select=id,viewed_at`,{headers:{apikey:sbKey}}).then(r=>r.json()).catch(()=>[]),
@@ -504,8 +472,6 @@ function AdminStats({ sbUrl, sbKey }) {
         ads48h:av.filter(a=>new Date(a.viewed_at)>new Date(h48)).length,
         adsW:av.filter(a=>new Date(a.viewed_at)>new Date(w1)).length,
         adsM:av.filter(a=>new Date(a.viewed_at)>new Date(m1)).length,
-        top10: p.slice(0,10),
-        avgTokens: p.length > 0 ? Math.round(p.reduce((s,u)=>s+(u.tokens||0),0)/p.length) : 0,
       });
     } catch(e){}
     setLoading(false);
@@ -549,57 +515,8 @@ function AdminStats({ sbUrl, sbKey }) {
         <div style={card}><div style={val}>{stats.adsW||0}</div><div style={lbl}>1 semana</div></div>
         <div style={card}><div style={val}>{stats.adsM||0}</div><div style={lbl}>1 mes</div></div>
       </div>
-      <div style={sec}>TOP 10 JUGADORES POR TOKENS</div>
-      <div style={{...grid,gridTemplateColumns:"1fr",marginBottom:8}}>
-        <div style={card}><div style={{...val,color:"#a78bfa"}}>{(stats.avgTokens||0).toLocaleString()}</div><div style={lbl}>Media de tokens por usuario</div></div>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-        {(stats.top10||[]).map((u,i)=>(
-          <div key={u.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:10,padding:"10px 16px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",color:i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"rgba(255,255,255,.3)",fontWeight:900,width:28}}>
-                {i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}
-              </span>
-              <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,color:"#fff"}}>{u.username}</span>
-            </div>
-            <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,color:"#4ade80"}}>{(u.tokens||0).toLocaleString()} 🪙</span>
-          </div>
-        ))}
-      </div>
-      <button onClick={loadStats} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 16px",color:"rgba(255,255,255,.4)",fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",cursor:"pointer",letterSpacing:".1em"}}>🔄 ACTUALIZAR</button>
-}
-
-// ── MISSIONS POOL ─────────────────────────────────────────────────────────────
-const MISSION_POOL = [
-  { id:"w3",  title:"Triple victoria",    desc:"Gana 3 partidas esta semana",        cat:"wins",   req:3,  reward:150, icon:"🏆" },
-  { id:"w10", title:"Campeón semanal",    desc:"Gana 10 partidas esta semana",       cat:"wins",   req:10, reward:400, icon:"👑" },
-  { id:"w25", title:"Imparable",          desc:"Gana 25 partidas esta semana",       cat:"wins",   req:25, reward:800, icon:"⚡" },
-  { id:"g5",  title:"Calentando",         desc:"Juega 5 partidas esta semana",       cat:"games",  req:5,  reward:100, icon:"🎮" },
-  { id:"g20", title:"En forma",           desc:"Juega 20 partidas esta semana",      cat:"games",  req:20, reward:300, icon:"💪" },
-  { id:"g50", title:"Máquina de jugar",   desc:"Juega 50 partidas esta semana",      cat:"games",  req:50, reward:700, icon:"🤖" },
-  { id:"s3",  title:"En racha",           desc:"Consigue una racha de 3 victorias",  cat:"streak", req:3,  reward:200, icon:"🔥" },
-  { id:"s5",  title:"Intratable",         desc:"Consigue una racha de 5 victorias",  cat:"streak", req:5,  reward:500, icon:"💥" },
-  { id:"r1",  title:"Trae un amigo",      desc:"Invita a 1 persona esta semana",     cat:"refs",   req:1,  reward:300, icon:"🤝" },
-  { id:"p",   title:"Prueba la sala VIP", desc:"Juega al menos 1 partida en VIP",    cat:"vip",    req:1,  reward:250, icon:"💎" },
-  { id:"e",   title:"La sala Elite",      desc:"Juega al menos 1 partida en Elite",  cat:"elite",  req:1,  reward:350, icon:"💠" },
-  { id:"ss",  title:"Sala Starter",       desc:"Gana 5 partidas en sala Starter",    cat:"starter",req:5,  reward:120, icon:"🌱" },
-];
-
-function getWeekKey() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${week}`;
-}
-
-function getWeekMissions() {
-  const week = parseInt(getWeekKey().split("W")[1]);
-  const shuffled = [...MISSION_POOL].sort((a,b) => {
-    const ha = (week * 31 + a.id.charCodeAt(0)) % 100;
-    const hb = (week * 31 + b.id.charCodeAt(0)) % 100;
-    return ha - hb;
-  });
-  return shuffled.slice(0, 4);
+    </div>
+  );
 }
 
 function App() {
@@ -651,10 +568,6 @@ function App() {
   const voteChangeCount = useRef(0);
   const [showVoteMsg, setShowVoteMsg] = useState(false);
   const voteMsgTimer = useRef(null);
-  // Missions
-  const [missions, setMissions] = useState([]);
-  const [missionCompletions, setMissionCompletions] = useState([]);
-  const [missionStats, setMissionStats] = useState({ wins:0, games:0, refs:0 });
   // History expand
   const [histExpanded, setHistExpanded] = useState(false);
   // Lobby tournament banner
@@ -850,6 +763,17 @@ function App() {
       else { setResetOk("✅ Contraseña cambiada correctamente"); setTimeout(() => setScreen("auth"), 2500); }
     } catch(e) { setResetErr("Error de conexión"); }
     setResetBusy(false);
+  }
+
+  async function applyReferral(newUserId) {
+    const code = regRefCode || localStorage.getItem("mm_ref");
+    if (!code) return;
+    const referrers = await dbGet("profiles", `referral_code=eq.${code}&select=id,tokens`, KEY);
+    if (!referrers || !referrers[0] || referrers[0].id === newUserId) return;
+    const referrerId = referrers[0].id;
+    await dbInsertRaw("referrals", { referrer_id: referrerId, referred_id: newUserId, bonus_paid: true }, KEY);
+    await dbUpdate("profiles", `id=eq.${referrerId}`, { tokens: (referrers[0].tokens || 0) + 500 }, KEY);
+    localStorage.removeItem("mm_ref");
   }
 
   const TIMEZONES = [
@@ -1056,77 +980,7 @@ function App() {
     checkAnnouncements();
   }
 
-  // ── MISSIONS ─────────────────────────────────────────────────────────────
-  async function loadMissions() {
-    const weekKey = getWeekKey();
-    const weekStart = new Date(); weekStart.setHours(0,0,0,0);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekStartISO = weekStart.toISOString();
-
-    const [hist, completions, refs] = await Promise.all([
-      dbGet("match_history", `user_id=eq.${userIdRef.current}&created_at=gt.${weekStartISO}&select=result,room_id`, tokenRef.current),
-      dbGet("mission_completions", `user_id=eq.${userIdRef.current}&week_key=eq.${weekKey}`, tokenRef.current),
-      dbGet("referrals", `referrer_id=eq.${userIdRef.current}&created_at=gt.${weekStartISO}`, tokenRef.current),
-    ]);
-
-    const h = Array.isArray(hist) ? hist : [];
-    const wins = h.filter(x => x.result === "win").length;
-    const games = h.length;
-    const refCount = Array.isArray(refs) ? refs.length : 0;
-    const vipGames = h.filter(x => x.room_id === "vip").length;
-    const eliteGames = h.filter(x => x.room_id === "elite").length;
-    const starterWins = h.filter(x => x.room_id === "starter" && x.result === "win").length;
-
-    setMissionStats({ wins, games, refs: refCount, vip: vipGames, elite: eliteGames, starter: starterWins });
-    setMissions(getWeekMissions());
-    setMissionCompletions(Array.isArray(completions) ? completions : []);
-    setScreen("missions");
-  }
-
-  function getMissionProgress(m, stats) {
-    if (m.cat === "wins")    return stats.wins || 0;
-    if (m.cat === "games")   return stats.games || 0;
-    if (m.cat === "streak")  return streak;
-    if (m.cat === "refs")    return stats.refs || 0;
-    if (m.cat === "vip")     return stats.vip || 0;
-    if (m.cat === "elite")   return stats.elite || 0;
-    if (m.cat === "starter") return stats.starter || 0;
-    return 0;
-  }
-
-  async function claimMission(m) {
-    const weekKey = getWeekKey();
-    await dbInsertRaw("mission_completions", {
-      user_id: userIdRef.current, mission_id: m.id, week_key: weekKey, claimed: true
-    }, tokenRef.current);
-    setMissionCompletions(prev => [...prev, { mission_id: m.id, week_key: weekKey, claimed: true }]);
-    await saveTok(tokRef.current + m.reward);
-    soundBonus();
-  }
-
-  // ── 2ND LEVEL REFERRAL ────────────────────────────────────────────────────
-  async function applyReferral(newUserId) {
-    const code = regRefCode || localStorage.getItem("mm_ref");
-    if (!code) return;
-    const referrers = await dbGet("profiles", `referral_code=eq.${code}&select=id,tokens`, KEY);
-    if (!referrers || !referrers[0] || referrers[0].id === newUserId) return;
-    const referrerId = referrers[0].id;
-    await dbInsertRaw("referrals", { referrer_id: referrerId, referred_id: newUserId, bonus_paid: true }, KEY);
-    // Give referrer 500 tokens
-    await dbUpdate("profiles", `id=eq.${referrerId}`, { tokens: (referrers[0].tokens || 0) + 500 }, KEY);
-    // Check if referrer was also referred by someone (2nd level)
-    const lvl2 = await dbGet("referrals", `referred_id=eq.${referrerId}&select=referrer_id`, KEY);
-    if (lvl2 && lvl2[0]) {
-      const grandReferrerId = lvl2[0].referrer_id;
-      const gp = await dbGet("profiles", `id=eq.${grandReferrerId}&select=tokens`, KEY);
-      if (gp && gp[0]) {
-        await dbUpdate("profiles", `id=eq.${grandReferrerId}`, { tokens: (gp[0].tokens || 0) + 100 }, KEY);
-      }
-    }
-    localStorage.removeItem("mm_ref");
-  }
-
-  // ── BADGES ─────────────────────────────────────────────────────────────────
+  // ── BADGES ───────────────────────────────────────────────────────────────
   async function loadBadges() {
     const badges = await dbGet("badges", "order=requirement.asc", KEY);
     const ub = await dbGet("user_badges", `user_id=eq.${userIdRef.current}`, tokenRef.current);
@@ -1581,14 +1435,12 @@ function App() {
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
               <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
-              <button className="ghost-btn" onClick={() => loadTournaments()}>🏆 Torneos</button>
-              <button className="ghost-btn" onClick={loadMissions}>🎯 Misiones</button>
+              <button className="ghost-btn" onClick={() => { loadTournaments(); }}>🏆 Torneos</button>
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
               <button className="ghost-btn" onClick={loadRanking}>📊 Ranking</button>
               <button className="ghost-btn" onClick={loadBadges}>🎖️ Logros</button>
-              <button className="ghost-btn" onClick={() => setScreen("redeem")}>💰 Canjear</button>
               <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
             </div>
@@ -1654,11 +1506,7 @@ function App() {
         </div>
       )}
       {screen === "game" && room && (
-        <div className="game" style={{
-          background:`radial-gradient(ellipse 100% 60% at 50% 0%, ${room.color}28 0, transparent 65%), radial-gradient(ellipse 60% 40% at 50% 100%, ${room.color}10 0, transparent 60%), #060609`,
-          minHeight:"100vh"
-        }}>
-          {/* Subtle color border on game card */}
+        <div className="game" style={{background:`radial-gradient(ellipse 80% 40% at 50% 0%, ${room.color}18 0, transparent 60%), #060609`}}>
           {showVoteMsg && (
             <div className="vote-msg">😄 ¡Tranquilo! Tu último voto es el que cuenta</div>
           )}
@@ -1669,7 +1517,7 @@ function App() {
             </div>
             <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
           </div>
-          <div className="game-card" style={{borderColor: room.color + "33", boxShadow: room.glow}}>
+          <div className="game-card">
             {phase === "waiting" && (
               <div className="waiting">
                 <div className="dots"><div className="dot"></div><div className="dot"></div><div className="dot"></div></div>
@@ -2163,107 +2011,6 @@ function App() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ── MISSIONS ── */}
-      {screen === "missions" && (
-        <div className="missions">
-          <div className="topbar">
-            <div className="topbar-logo">🎯 MISIONES</div>
-            <div className="topbar-right">
-              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
-              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
-            </div>
-          </div>
-          <div className="mission-week" style={{maxWidth:800,margin:"0 auto 20px"}}>
-            SEMANA {getWeekKey()} · Se renuevan cada lunes automáticamente
-          </div>
-          <div className="mission-list">
-            {missions.map(m => {
-              const progress = getMissionProgress(m, missionStats);
-              const completed = progress >= m.req;
-              const comp = missionCompletions.find(c => c.mission_id === m.id);
-              const claimed = comp?.claimed;
-              const pct = Math.min(100, Math.round((progress / m.req) * 100));
-              return (
-                <div key={m.id} className={`mission-row${claimed?" claimed":completed?" done":""}`}>
-                  <div className="mission-icon">{m.icon}</div>
-                  <div className="mission-info">
-                    <div className="mission-title">{m.title}</div>
-                    <div className="mission-desc">{m.desc}</div>
-                    <div className="mission-prog">
-                      <div className={`mission-prog-bar${completed?" done":""}`} style={{width:`${pct}%`}} />
-                    </div>
-                    <div style={{fontSize:".7rem",color:"rgba(255,255,255,.25)",marginTop:4,fontWeight:600}}>
-                      {Math.min(progress, m.req)}/{m.req}
-                    </div>
-                  </div>
-                  <div className="mission-right">
-                    <div className="mission-reward">+{m.reward.toLocaleString()} {COIN}</div>
-                    {claimed
-                      ? <div className="mission-done-tag">✅ CANJEADO</div>
-                      : completed
-                        ? <button className="mission-claim-btn" onClick={() => claimMission(m)}>RECLAMAR</button>
-                        : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── REDEEM ── */}
-      {screen === "redeem" && (
-        <div className="redeem">
-          <div className="topbar">
-            <div className="topbar-logo">💰 CANJEAR PREMIOS</div>
-            <div className="topbar-right">
-              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
-              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
-            </div>
-          </div>
-
-          {/* Coming soon banner */}
-          <div className="redeem-banner">
-            <div className="redeem-banner-icon">🔒</div>
-            <div>
-              <div className="redeem-banner-title">PRÓXIMAMENTE DISPONIBLE</div>
-              <div className="redeem-banner-sub">
-                El sistema de canje estará activo muy pronto. Sigue acumulando tokens —
-                cuando abramos el canje podrás convertirlos en premios reales.
-                ¡Los tokens que acumules ahora ya cuentan!
-              </div>
-            </div>
-          </div>
-
-          {/* Prize cards */}
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:16,textTransform:"uppercase"}}>Premios disponibles al activar el canje</div>
-          <div className="redeem-grid">
-            {[
-              { eur:5,  tokens:100000, ratio:"20.000 tokens = 1€" },
-              { eur:10, tokens:180000, ratio:"18.000 tokens = 1€" },
-              { eur:20, tokens:320000, ratio:"16.000 tokens = 1€" },
-              { eur:50, tokens:700000, ratio:"14.000 tokens = 1€" },
-            ].map(r => (
-              <div key={r.eur} className="redeem-card">
-                <div className="redeem-eur">{r.eur}€</div>
-                <div className="redeem-tokens">{r.tokens.toLocaleString()} tokens</div>
-                <div className="redeem-ratio">📈 {r.ratio}</div>
-                <div className="redeem-lock">🔒 PRÓXIMAMENTE</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Info box */}
-          <div className="redeem-info">
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.35)",letterSpacing:".2em",marginBottom:12}}>¿CÓMO FUNCIONA?</div>
-            <strong>¿Cuándo podré canjear?</strong> El sistema de canje se activará próximamente. Todos los tokens acumulados contarán.<br/><br/>
-            <strong>¿Cómo recibiré el premio?</strong> Los premios se entregarán en forma de tarjeta regalo Amazon enviada por email en menos de 48h.<br/><br/>
-            <strong>¿Cuánto vale 1 token?</strong> Cuanto más canjeas de golpe, más vale cada token. El mejor ratio es canjear 50€ de una vez — <strong>14.000 tokens por euro</strong>.<br/><br/>
-            <strong>¿Hay un mínimo?</strong> El mínimo de canje es 5€ (100.000 tokens).
-          </div>
         </div>
       )}
 
