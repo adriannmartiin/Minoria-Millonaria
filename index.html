@@ -3,8 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Minoría Millonaria</title>
+<title>Minoría Millonaria — La minoría siempre gana</title>
 <link rel="icon" type="image/png" href="/coin.png" />
+<meta property="og:title" content="Minoría Millonaria" />
+<meta property="og:description" content="El juego donde la minoría siempre gana. ¿Eres capaz de pensar diferente?" />
+<meta property="og:image" content="https://minoria-millonaria.vercel.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://minoria-millonaria.vercel.app" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Minoría Millonaria" />
+<meta name="twitter:description" content="El juego donde la minoría siempre gana." />
+<meta name="twitter:image" content="https://minoria-millonaria.vercel.app/og-image.png" />
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -410,6 +421,75 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 
 .empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
+
+function AdminStats({ sbUrl, sbKey }) {
+  const [stats, setStats] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => { loadStats(); }, []);
+  async function loadStats() {
+    setLoading(true);
+    try {
+      const h24 = new Date(Date.now()-86400000).toISOString();
+      const h48 = new Date(Date.now()-172800000).toISOString();
+      const w1  = new Date(Date.now()-604800000).toISOString();
+      const m1  = new Date(Date.now()-2592000000).toISOString();
+      const [profiles, history, referrals] = await Promise.all([
+        fetch(`${sbUrl}/rest/v1/profiles?select=id,tokens,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
+        fetch(`${sbUrl}/rest/v1/match_history?select=room_id,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
+        fetch(`${sbUrl}/rest/v1/referrals?select=id`,{headers:{apikey:sbKey}}).then(r=>r.json()),
+      ]);
+      const p = Array.isArray(profiles)?profiles:[];
+      const h = Array.isArray(history)?history:[];
+      const roomCounts={};
+      h.forEach(r=>{roomCounts[r.room_id]=(roomCounts[r.room_id]||0)+1;});
+      setStats({
+        totalUsers:p.length,
+        tokensInCirculation:p.reduce((s,u)=>s+(u.tokens||0),0),
+        totalGames:h.length,
+        reg24h:p.filter(u=>new Date(u.created_at)>new Date(h24)).length,
+        reg48h:p.filter(u=>new Date(u.created_at)>new Date(h48)).length,
+        regW:p.filter(u=>new Date(u.created_at)>new Date(w1)).length,
+        regM:p.filter(u=>new Date(u.created_at)>new Date(m1)).length,
+        roomCounts,
+        totalRefs:Array.isArray(referrals)?referrals.length:0,
+      });
+    } catch(e){}
+    setLoading(false);
+  }
+  const card={background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"18px 20px",textAlign:"center"};
+  const val={fontFamily:"'Orbitron',sans-serif",fontSize:"1.5rem",fontWeight:900,color:"#fbbf24",marginBottom:4};
+  const lbl={fontSize:".7rem",color:"rgba(255,255,255,.35)",letterSpacing:".15em",textTransform:"uppercase",fontWeight:700};
+  const sec={fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",textTransform:"uppercase",marginBottom:12,marginTop:20};
+  const grid={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:8};
+  const rooms={starter:"🌱 Starter",medium:"⚡ Medium",prime:"👑 Prime",vip:"💎 VIP",elite:"💠 Elite"};
+  if(loading) return <div style={{padding:40,textAlign:"center",color:"rgba(255,255,255,.3)",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",letterSpacing:".2em"}}>CARGANDO...</div>;
+  if(!stats) return null;
+  return (
+    <div>
+      <div style={sec}>RESUMEN GLOBAL</div>
+      <div style={grid}>
+        <div style={card}><div style={val}>{stats.totalUsers.toLocaleString()}</div><div style={lbl}>Usuarios totales</div></div>
+        <div style={card}><div style={{...val,color:"#4ade80"}}>{stats.tokensInCirculation.toLocaleString()}</div><div style={lbl}>Tokens circulación</div></div>
+        <div style={card}><div style={{...val,color:"#60a5fa"}}>{stats.totalGames.toLocaleString()}</div><div style={lbl}>Partidas totales</div></div>
+        <div style={card}><div style={{...val,color:"#c084fc"}}>{stats.totalRefs.toLocaleString()}</div><div style={lbl}>Referidos totales</div></div>
+      </div>
+      <div style={sec}>NUEVOS REGISTROS</div>
+      <div style={grid}>
+        <div style={card}><div style={val}>{stats.reg24h}</div><div style={lbl}>24 horas</div></div>
+        <div style={card}><div style={val}>{stats.reg48h}</div><div style={lbl}>48 horas</div></div>
+        <div style={card}><div style={val}>{stats.regW}</div><div style={lbl}>1 semana</div></div>
+        <div style={card}><div style={val}>{stats.regM}</div><div style={lbl}>1 mes</div></div>
+      </div>
+      <div style={sec}>PARTIDAS POR SALA</div>
+      <div style={grid}>
+        {Object.entries(rooms).map(([id,name])=>(
+          <div key={id} style={card}><div style={{...val,fontSize:"1.2rem"}}>{(stats.roomCounts[id]||0).toLocaleString()}</div><div style={lbl}>{name}</div></div>
+        ))}
+      </div>
+      <button onClick={loadStats} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 16px",color:"rgba(255,255,255,.4)",fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",cursor:"pointer",letterSpacing:".1em",marginTop:12}}>🔄 ACTUALIZAR</button>
+    </div>
+  );
+}
 
 function App() {
   const [screen, setScreen]   = useState("auth");
@@ -1732,24 +1812,37 @@ function App() {
             )}
             {tournaments.map(t => {
               const joined = myEntries.includes(t.id);
-              const canJoin = tokRef.current >= t.entry_cost && !joined;
+              const now = Date.now();
+              const startMs = new Date(t.starts_at).getTime();
+              const expired = startMs < now;
+              const diff = startMs - now;
+              const hoursLeft = Math.floor(diff / 3600000);
+              const minsLeft = Math.floor((diff % 3600000) / 60000);
+              const timeLabel = hoursLeft > 0 ? `⏱ ${hoursLeft}h ${minsLeft}m` : `⏱ ${minsLeft} min`;
+              const canJoin = tokRef.current >= t.entry_cost && !joined && !expired;
               const entries = t.current_players || 0;
               return (
-                <div key={t.id} className="tourn-card">
-                  <div className="tourn-title">{t.title}</div>
+                <div key={t.id} className="tourn-card" style={{opacity: expired ? 0.4 : 1, filter: expired ? "grayscale(0.5)" : "none"}}>
+                  <div className="tourn-title">
+                    {t.title}
+                    {expired && <span style={{fontSize:".7rem",color:"#f87171",fontFamily:"sans-serif",fontWeight:400,marginLeft:8,letterSpacing:0}}>FINALIZADO</span>}
+                  </div>
                   {t.description && <div style={{fontSize:".85rem",color:"rgba(255,255,255,.4)",marginBottom:12}}>{t.description}</div>}
                   <div className="tourn-meta">
                     <span className="tourn-badge date">📅 {formatTZ(t.starts_at, tz)}</span>
                     <span className="tourn-badge prize">🏆 {t.prize?.toLocaleString()} tokens</span>
                     <span className="tourn-badge entry">Entrada: {t.entry_cost} {COIN}</span>
                     <span className="tourn-badge players">👥 {entries}/{t.max_players}</span>
+                    {!expired && <span className="tourn-badge" style={{background:"rgba(251,191,36,.1)",color:"#fbbf24",border:"1px solid rgba(251,191,36,.25)"}}>{timeLabel}</span>}
                   </div>
-                  <button
-                    className={`tourn-btn${joined?" joined":""}`}
-                    disabled={!canJoin && !joined}
-                    onClick={() => canJoin && joinTournament(t)}>
-                    {joined ? "✅ INSCRITO" : tokRef.current < t.entry_cost ? "TOKENS INSUFICIENTES" : "INSCRIBIRSE"}
-                  </button>
+                  {!expired && (
+                    <button
+                      className={`tourn-btn${joined?" joined":""}`}
+                      disabled={!canJoin && !joined}
+                      onClick={() => canJoin && joinTournament(t)}>
+                      {joined ? "✅ INSCRITO" : tokRef.current < t.entry_cost ? "TOKENS INSUFICIENTES" : "INSCRIBIRSE"}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -2055,9 +2148,7 @@ function App() {
           )}
 
           {adminTab === "stats" && (
-            <div style={{color:"rgba(255,255,255,.4)",fontSize:".9rem",padding:"40px 0",textAlign:"center"}}>
-              Próximamente — estadísticas globales del juego
-            </div>
+            <AdminStats sbUrl={SB} sbKey={KEY} />
           )}
         </div>
       )}
