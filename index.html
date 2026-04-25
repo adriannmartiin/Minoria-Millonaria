@@ -844,10 +844,34 @@ function App() {
     const badges = await dbGet("badges", "order=requirement.asc", KEY);
     const ub = await dbGet("user_badges", `user_id=eq.${userIdRef.current}`, tokenRef.current);
     const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&select=result`, tokenRef.current);
+    const histArr = Array.isArray(hist) ? hist : [];
     setAllBadges(Array.isArray(badges) ? badges : []);
     setUserBadges(Array.isArray(ub) ? ub : []);
-    if (Array.isArray(hist)) setHistory(hist);
+    if (histArr.length > 0) setHistory(histArr);
     setScreen("badges");
+
+    // Auto-check and unlock earned badges not yet in user_badges
+    const earnedIds = Array.isArray(ub) ? ub.map(b => b.badge_id) : [];
+    const wins = histArr.filter(h => h.result === "win").length;
+    const games = histArr.length;
+    const refs = await dbGet("referrals", `referrer_id=eq.${userIdRef.current}`, tokenRef.current);
+    const refCount = Array.isArray(refs) ? refs.length : 0;
+    const newlyUnlocked = [];
+    for (const badge of (Array.isArray(badges) ? badges : [])) {
+      if (earnedIds.includes(badge.id)) continue;
+      let progress = 0;
+      if (badge.category === "wins")   progress = wins;
+      if (badge.category === "games")  progress = games;
+      if (badge.category === "streak") progress = streak;
+      if (badge.category === "refs")   progress = refCount;
+      if (progress >= badge.requirement) {
+        await dbInsertRaw("user_badges", { user_id: userIdRef.current, badge_id: badge.id, claimed: false }, tokenRef.current);
+        newlyUnlocked.push({ badge_id: badge.id, claimed: false });
+      }
+    }
+    if (newlyUnlocked.length > 0) {
+      setUserBadges(prev => [...prev, ...newlyUnlocked]);
+    }
   }
 
   async function checkBadgesProgress() {
