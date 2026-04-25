@@ -325,7 +325,35 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .admin-tourn-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 18px;gap:12px;flex-wrap:wrap}
 .del-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:7px 14px;color:#fca5a5;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;flex-shrink:0}
 .del-btn:hover{background:rgba(239,68,68,.2)}
-/* GIFT POPUP */
+/* BADGES */
+.badges-screen{min-height:100vh;padding:28px 24px}
+.badge-category{margin-bottom:32px;max-width:800px}
+.badge-cat-title{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.25em;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.badge-list{display:flex;flex-direction:column;gap:10px}
+.badge-row{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px;transition:all .2s}
+.badge-row.unlocked{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05)}
+.badge-row.claimed{border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.04);opacity:.7}
+.badge-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.badge-info{display:flex;align-items:center;gap:12px}
+.badge-icon{font-size:1.6rem;flex-shrink:0}
+.badge-name{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;color:#fff}
+.badge-desc{font-size:.75rem;color:rgba(255,255,255,.35);margin-top:2px;font-weight:500}
+.badge-reward{font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;color:#4ade80;white-space:nowrap}
+.badge-progress{height:7px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden}
+.badge-bar{height:100%;background:linear-gradient(90deg,#fbbf24,#d97706);border-radius:100px;transition:width .8s ease}
+.badge-bar.done{background:linear-gradient(90deg,#4ade80,#16a34a)}
+.badge-pct{font-size:.68rem;color:rgba(255,255,255,.3);margin-top:5px;font-weight:600;letter-spacing:.08em}
+.badge-claim-btn{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:8px;padding:8px 16px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
+.badge-claimed-tag{font-size:.7rem;color:#4ade80;font-weight:700;letter-spacing:.1em}
+/* BADGE NOTIFICATION TOAST */
+@keyframes toast-in{0%{transform:translateY(80px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes toast-out{0%{transform:translateY(0);opacity:1}100%{transform:translateY(80px);opacity:0}}
+.badge-toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(251,191,36,.15),rgba(251,191,36,.05));border:1px solid rgba(251,191,36,.4);border-radius:16px;padding:16px 24px;z-index:9996;text-align:center;min-width:280px;backdrop-filter:blur(20px);animation:toast-in .4s ease forwards;box-shadow:0 8px 32px rgba(251,191,36,.15)}
+.badge-toast.hiding{animation:toast-out .4s ease forwards}
+.badge-toast-icon{font-size:1.8rem;margin-bottom:6px}
+.badge-toast-title{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:900;color:#fbbf24;margin-bottom:4px;letter-spacing:.06em}
+.badge-toast-sub{font-size:.78rem;color:rgba(255,255,255,.5);font-weight:500}
+.badge-toast-btn{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:8px;padding:8px 18px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;margin-top:10px;letter-spacing:.08em}
 .gift-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9997;padding:24px}
 .gift-card{background:#0d0d18;border:1px solid rgba(251,191,36,.3);border-radius:24px;padding:44px 36px;max-width:420px;width:100%;text-align:center;box-shadow:0 0 60px rgba(251,191,36,.1)}
 .gift-icon{font-size:4rem;margin-bottom:16px;animation:gift-bounce .8s ease infinite alternate}
@@ -420,6 +448,11 @@ function App() {
   const [refCode, setRefCode] = useState("");
   const [refCopied, setRefCopied] = useState(false);
   const [regRefCode, setRegRefCode] = useState("");
+  // Badges
+  const [allBadges, setAllBadges] = useState([]);
+  const [userBadges, setUserBadges] = useState([]);
+  const [badgeNotif, setBadgeNotif] = useState(null); // {title, reward}
+  const badgeNotifTimer = useRef(null);
   // Room stats (players + timer per room)
   const [roomStats, setRoomStats] = useState({});
   const roomStatsRef = useRef(null);
@@ -803,8 +836,64 @@ function App() {
   }
 
   function buildNotificationsFromAnnouncements() {
-    // Reload notifications after creating announcement
     checkAnnouncements();
+  }
+
+  // ── BADGES ───────────────────────────────────────────────────────────────
+  async function loadBadges() {
+    const badges = await dbGet("badges", "order=requirement.asc", KEY);
+    const ub = await dbGet("user_badges", `user_id=eq.${userIdRef.current}`, tokenRef.current);
+    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&select=result`, tokenRef.current);
+    setAllBadges(Array.isArray(badges) ? badges : []);
+    setUserBadges(Array.isArray(ub) ? ub : []);
+    if (Array.isArray(hist)) setHistory(hist);
+    setScreen("badges");
+  }
+
+  async function checkBadgesProgress() {
+    if (!userIdRef.current) return;
+    const badges = await dbGet("badges", "order=requirement.asc", KEY);
+    if (!Array.isArray(badges)) return;
+    const ub = await dbGet("user_badges", `user_id=eq.${userIdRef.current}`, tokenRef.current);
+    const earnedIds = Array.isArray(ub) ? ub.map(b => b.badge_id) : [];
+    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&select=result`, tokenRef.current);
+    const wins = Array.isArray(hist) ? hist.filter(h => h.result === "win").length : 0;
+    const games = Array.isArray(hist) ? hist.length : 0;
+    const refs = await dbGet("referrals", `referrer_id=eq.${userIdRef.current}`, tokenRef.current);
+    const refCount = Array.isArray(refs) ? refs.length : 0;
+    for (const badge of badges) {
+      if (earnedIds.includes(badge.id)) continue;
+      let progress = 0;
+      if (badge.category === "wins")   progress = wins;
+      if (badge.category === "games")  progress = games;
+      if (badge.category === "streak") progress = streak;
+      if (badge.category === "refs")   progress = refCount;
+      if (progress >= badge.requirement) {
+        await dbInsertRaw("user_badges", { user_id: userIdRef.current, badge_id: badge.id, claimed: false }, tokenRef.current);
+        setUserBadges(prev => [...prev, { badge_id: badge.id, claimed: false }]);
+        showBadgeToast(badge);
+        break;
+      }
+    }
+  }
+
+  function showBadgeToast(badge) {
+    setBadgeNotif(badge);
+    clearTimeout(badgeNotifTimer.current);
+    badgeNotifTimer.current = setTimeout(() => setBadgeNotif(null), 7000);
+  }
+
+  async function claimBadge(badge) {
+    const ub = userBadges.find(b => b.badge_id === badge.id);
+    if (!ub || ub.claimed) return;
+    await fetch(`${SB}/rest/v1/user_badges?user_id=eq.${userIdRef.current}&badge_id=eq.${badge.id}`, {
+      method: "PATCH",
+      headers: { apikey: KEY, Authorization: `Bearer ${tokenRef.current}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ claimed: true })
+    });
+    setUserBadges(prev => prev.map(b => b.badge_id === badge.id ? {...b, claimed: true} : b));
+    await saveTok(tokRef.current + badge.reward);
+    soundBonus();
   }
 
   async function createTournament() {
@@ -1038,6 +1127,8 @@ function App() {
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, profileUpdate, tokenRef.current);
 
     setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak });
+    // Check badges after every game
+    setTimeout(() => checkBadgesProgress(), 2000);
 
     // Save to history
     if (myVote !== null) {
@@ -1170,21 +1261,25 @@ function App() {
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
               <button className="ghost-btn" onClick={loadRanking}>📊 Ranking</button>
+              <button className="ghost-btn" onClick={loadBadges}>🎖️ Logros</button>
               <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
             </div>
           </div>
           {showNotif && (
-            <div className="notif-panel">
-              <div className="notif-hdr">NOTIFICACIONES</div>
-              {notifications.length === 0 && <div style={{padding:"20px",color:"rgba(255,255,255,.25)",fontSize:".85rem",textAlign:"center"}}>Sin notificaciones</div>}
-              {notifications.map(n => (
-                <div key={n.id} className={`notif-item${n.unread?" unread":""}`} onClick={() => { setShowNotif(false); if(n.id !== "bonus") loadTournaments(); }}>
-                  <div className="notif-item-title">{n.title}</div>
-                  <div className="notif-item-sub">{n.sub}</div>
-                </div>
-              ))}
-            </div>
+            <>
+              <div style={{position:"fixed",inset:0,zIndex:8999}} onClick={() => setShowNotif(false)} />
+              <div className="notif-panel">
+                <div className="notif-hdr">NOTIFICACIONES</div>
+                {notifications.length === 0 && <div style={{padding:"20px",color:"rgba(255,255,255,.25)",fontSize:".85rem",textAlign:"center"}}>Sin notificaciones</div>}
+                {notifications.map(n => (
+                  <div key={n.id} className={`notif-item${n.unread?" unread":""}`} onClick={() => { setShowNotif(false); if(n.id !== "bonus") loadTournaments(); }}>
+                    <div className="notif-item-title">{n.title}</div>
+                    <div className="notif-item-sub">{n.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           <div className="lobby-hero">
             <div className="lobby-title">ELIGE TU SALA</div>
@@ -1638,6 +1733,73 @@ function App() {
         </div>
       )}
 
+      {/* ── BADGES ── */}
+      {screen === "badges" && (
+        <div className="badges-screen">
+          <div className="topbar">
+            <div className="topbar-logo">🎖️ LOGROS</div>
+            <div className="topbar-right">
+              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
+            </div>
+          </div>
+
+          {["wins","games","streak","refs"].map(cat => {
+            const catNames = { wins:"🏆 Victorias", games:"🎮 Partidas Jugadas", streak:"🔥 Racha Máxima", refs:"👫 Amigos Invitados" };
+            const catBadges = allBadges.filter(b => b.category === cat);
+            if (catBadges.length === 0) return null;
+            return (
+              <div key={cat} className="badge-category">
+                <div className="badge-cat-title">{catNames[cat]}</div>
+                <div className="badge-list">
+                  {catBadges.map(badge => {
+                    const ub = userBadges.find(b => b.badge_id === badge.id);
+                    const isUnlocked = !!ub;
+                    const isClaimed = ub?.claimed;
+                    // Get current progress from history stats
+                    const wins = history.filter(h => h.result === "win").length;
+                    const games = history.length;
+                    const refCount = 0; // will be loaded
+                    let current = 0;
+                    if (badge.category === "wins")   current = wins;
+                    if (badge.category === "games")  current = games;
+                    if (badge.category === "streak") current = streak;
+                    if (badge.category === "refs")   current = refCount;
+                    const pct = Math.min(100, Math.round((current / badge.requirement) * 100));
+                    return (
+                      <div key={badge.id} className={`badge-row${isUnlocked && !isClaimed ? " unlocked" : ""}${isClaimed ? " claimed" : ""}`}>
+                        <div className="badge-top">
+                          <div className="badge-info">
+                            <span className="badge-icon">{badge.icon}</span>
+                            <div>
+                              <div className="badge-name">{badge.title}</div>
+                              <div className="badge-desc">{badge.description}</div>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                            <div className="badge-reward">+{badge.reward.toLocaleString()} {COIN}</div>
+                            {isUnlocked && !isClaimed && (
+                              <button className="badge-claim-btn" onClick={() => claimBadge(badge)}>RECLAMAR</button>
+                            )}
+                            {isClaimed && <span className="badge-claimed-tag">✅ CANJEADO</span>}
+                          </div>
+                        </div>
+                        <div className="badge-progress">
+                          <div className={`badge-bar${isUnlocked ? " done" : ""}`} style={{width:`${pct}%`}} />
+                        </div>
+                        <div className="badge-pct">
+                          {isClaimed ? "Completado ✅" : `${Math.min(current, badge.requirement).toLocaleString()} / ${badge.requirement.toLocaleString()}${isUnlocked ? " — ¡Listo para reclamar!" : ""}`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── RANKING ── */}
       {screen === "ranking" && (
         <div className="ranking">
@@ -1682,6 +1844,18 @@ function App() {
             </div>
             <button className="btn-gold" onClick={() => setShowBonus(false)}>¡GENIAL!</button>
           </div>
+        </div>
+      )}
+
+      {/* ── BADGE TOAST ── */}
+      {badgeNotif && (
+        <div className="badge-toast">
+          <div className="badge-toast-icon">{badgeNotif.icon}</div>
+          <div className="badge-toast-title">¡LOGRO COMPLETADO!</div>
+          <div className="badge-toast-sub">{badgeNotif.title} — Ve a reclamar tu recompensa</div>
+          <button className="badge-toast-btn" onClick={() => { setBadgeNotif(null); loadBadges(); }}>
+            RECLAMAR +{badgeNotif.reward.toLocaleString()} {COIN}
+          </button>
         </div>
       )}
 
