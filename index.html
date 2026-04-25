@@ -3,20 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Minoría Millonaria — La minoría siempre gana</title>
+<title>Minoría Millonaria</title>
 <link rel="icon" type="image/png" href="/coin.png" />
-<!-- OG / Social -->
-<meta property="og:title" content="Minoría Millonaria" />
-<meta property="og:description" content="El juego donde la minoría siempre gana. ¿Eres capaz de pensar diferente?" />
-<meta property="og:image" content="https://minoria-millonaria.vercel.app/og-image.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://minoria-millonaria.vercel.app" />
-<meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Minoría Millonaria" />
-<meta name="twitter:description" content="El juego donde la minoría siempre gana." />
-<meta name="twitter:image" content="https://minoria-millonaria.vercel.app/og.png" />
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,36 +13,10 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100vh;background:#060609}
 #root{min-height:100vh}
-/* LOADING SCREEN */
-.loading-app{position:fixed;inset:0;background:#060609;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
-.loading-app.fade-out{opacity:0;pointer-events:none}
-@keyframes coin-spin{0%{transform:rotateY(0deg)}100%{transform:rotateY(360deg)}}
-@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.15);opacity:.6}}
-@keyframes load-bar{0%{width:0%}100%{width:100%}}
-@keyframes fade-up{0%{opacity:0;transform:translateY(20px)}100%{opacity:1;transform:translateY(0)}}
-.loading-coin{width:90px;height:90px;animation:coin-spin 1.8s ease-in-out infinite;transform-style:preserve-3d}
-.loading-ring{width:120px;height:120px;border-radius:50%;border:2px solid rgba(251,191,36,.2);position:absolute;animation:pulse-ring 2s ease infinite}
-.loading-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:120px;height:120px;margin-bottom:32px}
-.loading-title{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:.06em;animation:fade-up .6s ease .2s both}
-.loading-sub{font-size:.7rem;letter-spacing:.5em;color:rgba(251,191,36,.4);text-transform:uppercase;margin-top:8px;animation:fade-up .6s ease .4s both}
-.loading-bar-wrap{width:200px;height:3px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;margin-top:32px;animation:fade-up .6s ease .6s both}
-.loading-bar-fill{height:100%;background:linear-gradient(90deg,#fbbf24,#d97706);border-radius:100px;animation:load-bar 1.8s ease forwards}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<!-- Loading screen (shown before React hydrates) -->
-<div id="app-loading" class="loading-app">
-  <div class="loading-wrap">
-    <div class="loading-ring"></div>
-    <img src="/coin.png" class="loading-coin" style="width:80px;height:80px;object-fit:contain" />
-  </div>
-  <div class="loading-title">MINORÍA<br/>MILLONARIA</div>
-  <div class="loading-sub">La minoría siempre gana</div>
-  <div class="loading-bar-wrap">
-    <div class="loading-bar-fill"></div>
-  </div>
-</div>
 <script type="text/babel">
 const { useState, useRef, useEffect } = React;
 
@@ -206,9 +168,9 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .room-desc{font-size:.8rem;color:rgba(255,255,255,.35);margin-bottom:14px;font-weight:500}
 .room-bet{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:7px 14px;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:#fff;display:inline-block}
 /* GAME */
-.game{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse 80% 40% at 50% 0%,var(--room-color,transparent) 0%,transparent 55%),#060609;transition:background .5s ease}
+.game{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:680px;margin-bottom:28px;flex-wrap:wrap;gap:10px}
-.game-card{background:rgba(255,255,255,.03);border:1px solid var(--room-color,rgba(255,255,255,.09));border-radius:24px;padding:36px;width:100%;max-width:680px;transition:border-color .5s ease;box-shadow:0 0 40px -10px var(--room-color,transparent)}
+.game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:36px;width:100%;max-width:680px}
 .phase-tag{font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:center;margin-bottom:20px;font-weight:700}
 .timer-wrap{display:flex;justify-content:center;margin-bottom:22px}
 .timer-ring{position:relative;width:76px;height:76px}
@@ -449,92 +411,6 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
 
-// ── ADMIN STATS COMPONENT ────────────────────────────────────────────────────
-function AdminStats() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => { loadStats(); }, []);
-
-  async function loadStats() {
-    setLoading(true);
-    try {
-      const now = new Date();
-      const h24 = new Date(now - 86400000).toISOString();
-      const h48 = new Date(now - 172800000).toISOString();
-      const w1  = new Date(now - 604800000).toISOString();
-      const m1  = new Date(now - 2592000000).toISOString();
-      const [profiles, matches, adViews] = await Promise.all([
-        fetch(`${SB}/rest/v1/profiles?select=id,tokens,created_at`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-        fetch(`${SB}/rest/v1/match_history?select=room_id,created_at`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-        fetch(`${SB}/rest/v1/ad_views?select=viewed_at`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-      ]);
-      const p = Array.isArray(profiles) ? profiles : [];
-      const m = Array.isArray(matches) ? matches : [];
-      const a = Array.isArray(adViews) ? adViews : [];
-      const totalTokens = p.reduce((s, u) => s + (u.tokens || 0), 0);
-      const roomIds = ["starter","medium","prime","vip","elite"];
-      const roomMatches = {};
-      roomIds.forEach(id => { roomMatches[id] = m.filter(x => x.room_id === id).length; });
-      setStats({
-        total: p.length, totalTokens,
-        reg24h: p.filter(u => u.created_at > h24).length,
-        reg48h: p.filter(u => u.created_at > h48).length,
-        reg1w:  p.filter(u => u.created_at > w1).length,
-        reg1m:  p.filter(u => u.created_at > m1).length,
-        totalMatches: m.length, roomMatches,
-        totalAds: a.length,
-        ads24h: a.filter(x => x.viewed_at > h24).length,
-        ads48h: a.filter(x => x.viewed_at > h48).length,
-        ads1w:  a.filter(x => x.viewed_at > w1).length,
-        ads1m:  a.filter(x => x.viewed_at > m1).length,
-      });
-    } catch(e) {}
-    setLoading(false);
-  }
-
-  const ROOM_NAMES = { starter:"🌱 Starter", medium:"⚡ Medium", prime:"👑 Prime", vip:"💎 VIP", elite:"💠 Elite" };
-  const StatCard = ({ label, value, color="#fbbf24" }) => (
-    <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"16px 18px",textAlign:"center"}}>
-      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color,marginBottom:4}}>{typeof value === "number" ? value.toLocaleString() : value}</div>
-      <div style={{fontSize:".7rem",letterSpacing:".15em",textTransform:"uppercase",color:"rgba(255,255,255,.3)",fontWeight:700}}>{label}</div>
-    </div>
-  );
-
-  if (loading) return <div style={{color:"rgba(255,255,255,.3)",padding:"40px 0",textAlign:"center",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",letterSpacing:".2em"}}>CARGANDO...</div>;
-  if (!stats) return null;
-
-  return (
-    <div>
-      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.4)",letterSpacing:".2em",textTransform:"uppercase",marginBottom:14,fontWeight:700}}>USUARIOS</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:24}}>
-        <StatCard label="Total registrados" value={stats.total} />
-        <StatCard label="Últimas 24h" value={stats.reg24h} color="#4ade80" />
-        <StatCard label="Últimas 48h" value={stats.reg48h} color="#4ade80" />
-        <StatCard label="Última semana" value={stats.reg1w} color="#60a5fa" />
-        <StatCard label="Último mes" value={stats.reg1m} color="#60a5fa" />
-        <StatCard label="Tokens circulación" value={stats.totalTokens} color="#fbbf24" />
-      </div>
-      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.4)",letterSpacing:".2em",textTransform:"uppercase",marginBottom:14,fontWeight:700}}>PARTIDAS POR SALA</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:24}}>
-        {Object.entries(stats.roomMatches).map(([id, count]) => (
-          <StatCard key={id} label={ROOM_NAMES[id]} value={count} color="#c084fc" />
-        ))}
-        <StatCard label="Total partidas" value={stats.totalMatches} />
-      </div>
-      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.4)",letterSpacing:".2em",textTransform:"uppercase",marginBottom:14,fontWeight:700}}>ANUNCIOS VISTOS</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:24}}>
-        <StatCard label="Total" value={stats.totalAds} />
-        <StatCard label="Últimas 24h" value={stats.ads24h} color="#4ade80" />
-        <StatCard label="Últimas 48h" value={stats.ads48h} color="#4ade80" />
-        <StatCard label="Última semana" value={stats.ads1w} color="#60a5fa" />
-        <StatCard label="Último mes" value={stats.ads1m} color="#60a5fa" />
-      </div>
-      <button className="ghost-btn" onClick={loadStats}>🔄 Actualizar</button>
-    </div>
-  );
-}
-
 function App() {
   const [screen, setScreen]   = useState("auth");
   const [mode, setMode]       = useState("register");
@@ -545,27 +421,8 @@ function App() {
   const [user, setUser]       = useState(null);
   const [userEmail, setEmail] = useState("");
 
-  // Dismiss loading screen
-  useEffect(() => {
-    const el = document.getElementById("app-loading");
-    if (el) {
-      setTimeout(() => {
-        el.classList.add("fade-out");
-        setTimeout(() => el.remove(), 500);
-      }, 1800);
-    }
-  }, []);
-
-  // Room color theme
-  useEffect(() => {
-    if (room) {
-      document.documentElement.style.setProperty("--room-color", room.color);
-      document.documentElement.style.setProperty("--room-glow", room.glow);
-    } else {
-      document.documentElement.style.removeProperty("--room-color");
-      document.documentElement.style.removeProperty("--room-glow");
-    }
-  }, [room]);
+  // Cookie banner
+  const [showCookie, setShowCookie] = useState(() => !localStorage.getItem("mm_cookie_ok"));
   // Welcome modal
   const [showWelcome, setShowWelcome] = useState(false);
   // Daily bonus
@@ -645,10 +502,6 @@ function App() {
     if (screen === "lobby") {
       loadRoomStats();
       checkAnnouncements();
-      // Load tournaments silently for banner
-      dbGet("tournaments", "order=starts_at.asc&status=eq.upcoming", KEY).then(data => {
-        if (Array.isArray(data)) { setTournaments(data); buildNotifications(data); }
-      });
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
     } else {
       clearInterval(roomStatsRef.current);
@@ -1456,22 +1309,6 @@ function App() {
             <div className="lobby-title">ELIGE TU SALA</div>
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
           </div>
-          {/* Upcoming tournament banner */}
-          {tournaments.filter(t => {
-            const diff = new Date(t.starts_at) - Date.now();
-            return diff > 0 && diff < 86400000;
-          }).slice(0,1).map(t => (
-            <div key={t.id} style={{maxWidth:1000,margin:"-20px auto 28px",background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.25)",borderRadius:14,padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",cursor:"pointer"}} onClick={loadTournaments}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:"1.4rem"}}>🏆</span>
-                <div>
-                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:700,color:"#fbbf24"}}>{t.title}</div>
-                  <div style={{fontSize:".75rem",color:"rgba(255,255,255,.4)",marginTop:2}}>Empieza en menos de 24h · Premio: {t.prize?.toLocaleString()} tokens</div>
-                </div>
-              </div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.15)",padding:"6px 14px",borderRadius:20,border:"1px solid rgba(251,191,36,.3)",whiteSpace:"nowrap"}}>INSCRIBIRSE →</div>
-            </div>
-          ))}
           <div className="rooms">
             {ROOMS.map(r => (
               <div key={r.id}
@@ -2218,7 +2055,9 @@ function App() {
           )}
 
           {adminTab === "stats" && (
-            <AdminStats />
+            <div style={{color:"rgba(255,255,255,.4)",fontSize:".9rem",padding:"40px 0",textAlign:"center"}}>
+              Próximamente — estadísticas globales del juego
+            </div>
           )}
         </div>
       )}
