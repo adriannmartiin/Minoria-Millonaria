@@ -317,6 +317,19 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .ref-code{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;font-family:'Orbitron',sans-serif;font-size:.8rem;color:#fbbf24;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ref-copy{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:8px;padding:10px 18px;color:#0a0a0f;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .ref-info{font-size:.8rem;color:rgba(255,255,255,.35);margin-top:10px;line-height:1.6}
+/* TOURNAMENT BANNER */
+.tourn-banner{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(251,191,36,.05));border:1px solid rgba(251,191,36,.25);border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px;max-width:1100px;margin-left:auto;margin-right:auto;cursor:pointer;transition:all .2s}
+.tourn-banner:hover{border-color:rgba(251,191,36,.5)}
+.tourn-banner-txt{font-size:.88rem;color:#fbbf24;font-weight:700}
+.tourn-banner-sub{font-size:.75rem;color:rgba(255,255,255,.4);margin-top:3px}
+.tourn-banner-btn{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 16px;color:#fbbf24;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.08em}
+/* VOTE MSG */
+.vote-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,20,.95);border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:14px 24px;z-index:9995;font-size:.82rem;color:rgba(255,255,255,.7);font-weight:600;text-align:center;pointer-events:none;animation:toast-in .3s ease}
+/* ROOM COLOR THEME */
+.game-themed{background:radial-gradient(ellipse 60% 40% at 50% 0%,var(--room-color-dim,transparent) 0,transparent 70%)}
+/* HISTORY EXPAND */
+.hist-expand-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;color:rgba(255,255,255,.35);font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;width:100%;letter-spacing:.1em;margin-top:4px;transition:all .2s;max-width:800px}
+.hist-expand-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.6)}
 /* SESSION EXPIRED */
 .session-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:99999;padding:24px}
 .session-card{background:#0d0d18;border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:44px 36px;max-width:420px;width:100%;text-align:center}
@@ -433,13 +446,15 @@ function AdminStats({ sbUrl, sbKey }) {
       const h48 = new Date(Date.now()-172800000).toISOString();
       const w1  = new Date(Date.now()-604800000).toISOString();
       const m1  = new Date(Date.now()-2592000000).toISOString();
-      const [profiles, history, referrals] = await Promise.all([
+      const [profiles, history, referrals, adViews] = await Promise.all([
         fetch(`${sbUrl}/rest/v1/profiles?select=id,tokens,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
         fetch(`${sbUrl}/rest/v1/match_history?select=room_id,created_at`,{headers:{apikey:sbKey}}).then(r=>r.json()),
         fetch(`${sbUrl}/rest/v1/referrals?select=id`,{headers:{apikey:sbKey}}).then(r=>r.json()),
+        fetch(`${sbUrl}/rest/v1/ad_views?select=id,viewed_at`,{headers:{apikey:sbKey}}).then(r=>r.json()).catch(()=>[]),
       ]);
       const p = Array.isArray(profiles)?profiles:[];
       const h = Array.isArray(history)?history:[];
+      const av = Array.isArray(adViews)?adViews:[];
       const roomCounts={};
       h.forEach(r=>{roomCounts[r.room_id]=(roomCounts[r.room_id]||0)+1;});
       setStats({
@@ -452,6 +467,11 @@ function AdminStats({ sbUrl, sbKey }) {
         regM:p.filter(u=>new Date(u.created_at)>new Date(m1)).length,
         roomCounts,
         totalRefs:Array.isArray(referrals)?referrals.length:0,
+        totalAds:av.length,
+        ads24h:av.filter(a=>new Date(a.viewed_at)>new Date(h24)).length,
+        ads48h:av.filter(a=>new Date(a.viewed_at)>new Date(h48)).length,
+        adsW:av.filter(a=>new Date(a.viewed_at)>new Date(w1)).length,
+        adsM:av.filter(a=>new Date(a.viewed_at)>new Date(m1)).length,
       });
     } catch(e){}
     setLoading(false);
@@ -487,6 +507,14 @@ function AdminStats({ sbUrl, sbKey }) {
         ))}
       </div>
       <button onClick={loadStats} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 16px",color:"rgba(255,255,255,.4)",fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",cursor:"pointer",letterSpacing:".1em",marginTop:12}}>🔄 ACTUALIZAR</button>
+      <div style={sec}>ANUNCIOS VISTOS</div>
+      <div style={grid}>
+        <div style={card}><div style={{...val,color:"#f97316"}}>{(stats.totalAds||0).toLocaleString()}</div><div style={lbl}>Total anuncios</div></div>
+        <div style={card}><div style={val}>{stats.ads24h||0}</div><div style={lbl}>24 horas</div></div>
+        <div style={card}><div style={val}>{stats.ads48h||0}</div><div style={lbl}>48 horas</div></div>
+        <div style={card}><div style={val}>{stats.adsW||0}</div><div style={lbl}>1 semana</div></div>
+        <div style={card}><div style={val}>{stats.adsM||0}</div><div style={lbl}>1 mes</div></div>
+      </div>
     </div>
   );
 }
@@ -531,11 +559,19 @@ function App() {
   // Badges
   const [allBadges, setAllBadges] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
-  const [badgeNotif, setBadgeNotif] = useState(null); // {title, reward}
+  const [badgeNotif, setBadgeNotif] = useState(null);
   const badgeNotifTimer = useRef(null);
   // Room stats (players + timer per room)
   const [roomStats, setRoomStats] = useState({});
   const roomStatsRef = useRef(null);
+  // Vote change rate limiting
+  const voteChangeCount = useRef(0);
+  const [showVoteMsg, setShowVoteMsg] = useState(false);
+  const voteMsgTimer = useRef(null);
+  // History expand
+  const [histExpanded, setHistExpanded] = useState(false);
+  // Lobby tournament banner
+  const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
 
   // Game
   const [room, setRoom]       = useState(null);
@@ -582,12 +618,26 @@ function App() {
     if (screen === "lobby") {
       loadRoomStats();
       checkAnnouncements();
+      checkTournamentBanner();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
     } else {
       clearInterval(roomStatsRef.current);
     }
     return () => clearInterval(roomStatsRef.current);
   }, [screen]);
+
+  async function checkTournamentBanner() {
+    try {
+      const data = await dbGet("tournaments", "order=starts_at.asc", KEY);
+      if (!Array.isArray(data)) return;
+      const now = Date.now();
+      const soon = data.find(t => {
+        const diff = new Date(t.starts_at).getTime() - now;
+        return diff > 0 && diff < 86400000; // within 24h
+      });
+      setLobbyTournBanner(soon || null);
+    } catch(e) {}
+  }
 
   async function checkDailyBonus(profile, userId, token) {
     const today = new Date().toISOString().split("T")[0];
@@ -608,9 +658,20 @@ function App() {
   }
 
   async function loadRanking() {
-    const data = await dbGet("profiles",
-      "order=win_streak.desc&limit=10&select=username,win_streak,streak_tokens,tokens", KEY);
-    setRanking(Array.isArray(data) ? data : []);
+    // Get match history from last 24h and count wins per user
+    const h24 = new Date(Date.now()-86400000).toISOString();
+    const hist = await dbGet("match_history", `created_at=gt.${h24}&result=eq.win&select=user_id`, KEY);
+    const profiles = await dbGet("profiles", "select=id,username,win_streak", KEY);
+    if (!Array.isArray(hist) || !Array.isArray(profiles)) { setRanking([]); setScreen("ranking"); return; }
+    // Count wins per user in last 24h
+    const winCounts = {};
+    hist.forEach(h => { winCounts[h.user_id] = (winCounts[h.user_id] || 0) + 1; });
+    const ranked = profiles
+      .filter(p => winCounts[p.id])
+      .map(p => ({ ...p, wins24h: winCounts[p.id] || 0 }))
+      .sort((a, b) => b.wins24h - a.wins24h)
+      .slice(0, 10);
+    setRanking(ranked);
     setScreen("ranking");
   }
 
@@ -1065,6 +1126,8 @@ function App() {
   async function claimAdTokens() {
     const newTok = tokRef.current + 100;
     await saveTok(newTok);
+    // Register ad view
+    await dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
     setAdWatched(false);
     setAdCountdown(0);
   }
@@ -1154,6 +1217,9 @@ function App() {
   async function startNewRound(r) {
     const q = rand(QUESTIONS);
     resultSaved.current = false;
+    // Reset vote change counter
+    voteChangeCount.current = 0;
+    setShowVoteMsg(false);
     voteRef.current = null; setVote(null); setResult(null); setVC({ a: 0, b: 0 });
     await dbUpsert("game_rooms", {
       room_id: r.id,
@@ -1168,6 +1234,15 @@ function App() {
     if (!roundRef.current) return;
     const elapsed = (Date.now() - new Date(roundRef.current.started_at).getTime()) / 1000;
     if (elapsed >= VOTE_VISIBLE + VOTE_HIDDEN) return;
+    // Rate limiting message after 5 changes
+    if (voteRef.current !== null) {
+      voteChangeCount.current += 1;
+      if (voteChangeCount.current >= 5) {
+        setShowVoteMsg(true);
+        clearTimeout(voteMsgTimer.current);
+        voteMsgTimer.current = setTimeout(() => setShowVoteMsg(false), 3000);
+      }
+    }
     voteRef.current = v; setVote(v);
     setVoteFlash(v);
     setTimeout(() => setVoteFlash(null), 300);
@@ -1385,6 +1460,20 @@ function App() {
               </div>
             </>
           )}
+          {lobbyTournBanner && (() => {
+            const diff = new Date(lobbyTournBanner.starts_at).getTime() - Date.now();
+            const h = Math.floor(diff/3600000);
+            const m = Math.floor((diff%3600000)/60000);
+            return (
+              <div className="tourn-banner" onClick={() => loadTournaments()}>
+                <div>
+                  <div className="tourn-banner-txt">🏆 {lobbyTournBanner.title} — en {h > 0 ? `${h}h ${m}m` : `${m} min`}</div>
+                  <div className="tourn-banner-sub">Premio: {lobbyTournBanner.prize?.toLocaleString()} tokens · Entrada: {lobbyTournBanner.entry_cost} tokens</div>
+                </div>
+                <div className="tourn-banner-btn">VER TORNEO →</div>
+              </div>
+            );
+          })()}
           <div className="lobby-hero">
             <div className="lobby-title">ELIGE TU SALA</div>
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
@@ -1417,7 +1506,10 @@ function App() {
         </div>
       )}
       {screen === "game" && room && (
-        <div className="game">
+        <div className="game" style={{background:`radial-gradient(ellipse 80% 40% at 50% 0%, ${room.color}18 0, transparent 60%), #060609`}}>
+          {showVoteMsg && (
+            <div className="vote-msg">😄 ¡Tranquilo! Tu último voto es el que cuenta</div>
+          )}
           <div className="game-hdr">
             <button className="ghost-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>← Lobby</button>
             <div className="token-pill" style={{ color: room.color, borderColor: room.color + "44", background: room.color + "12" }}>
@@ -1618,7 +1710,7 @@ function App() {
           <div className="history-list">
             {history.length === 0 ? (
               <div className="empty-hist">Aún no has jugado ninguna partida</div>
-            ) : history.map(h => (
+            ) : (histExpanded ? history : history.slice(0, 5)).map(h => (
               <div key={h.id} className="history-row">
                 <div>
                   <div className="history-q">{h.question_a} vs {h.question_b}</div>
@@ -1635,6 +1727,11 @@ function App() {
               </div>
             ))}
           </div>
+          {history.length > 5 && (
+            <button className="hist-expand-btn" onClick={() => setHistExpanded(e => !e)}>
+              {histExpanded ? "▲ VER MENOS" : `▼ VER MÁS (${history.length - 5} partidas más)`}
+            </button>
+          )}
 
           {/* Referral */}
           <div className="ref-box">
@@ -1924,17 +2021,23 @@ function App() {
             <div className="topbar-logo">🏆 RANKING</div>
             <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
           </div>
-          <div className="section-title" style={{textAlign:"center",marginBottom:20}}>Top jugadores por racha de victorias</div>
+          <div className="section-title" style={{textAlign:"center",marginBottom:4}}>Mayor racha de victorias — últimas 24h</div>
+          <div style={{textAlign:"center",fontSize:".75rem",color:"rgba(255,255,255,.2)",marginBottom:20,letterSpacing:".08em"}}>Se reinicia cada día</div>
           <div className="rank-list">
-            {ranking.length === 0 && <div style={{textAlign:"center",color:"rgba(255,255,255,.2)",padding:40}}>Aún no hay datos suficientes</div>}
+            {ranking.length === 0 && (
+              <div style={{textAlign:"center",color:"rgba(255,255,255,.2)",padding:40,fontSize:".85rem"}}>
+                Nadie ha jugado en las últimas 24h<br/>
+                <span style={{fontSize:".75rem",opacity:.5}}>¡Sé el primero en aparecer aquí!</span>
+              </div>
+            )}
             {ranking.map((p, i) => (
               <div key={i} className="rank-row">
                 <div className={`rank-pos${i===0?" gold":i===1?" silver":i===2?" bronze":""}`}>
                   {i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}
                 </div>
                 <div className="rank-name">{p.username}</div>
-                <div className="rank-streak">🔥 {p.win_streak || 0} racha</div>
-                <div className="rank-tokens">+{(p.streak_tokens || 0).toLocaleString()} {COIN}</div>
+                <div className="rank-streak">🏆 {p.wins24h} victorias hoy</div>
+                <div className="rank-streak" style={{color:"#fbbf24"}}>🔥 Racha: {p.win_streak || 0}</div>
               </div>
             ))}
           </div>
