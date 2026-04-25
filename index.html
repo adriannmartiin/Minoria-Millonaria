@@ -195,13 +195,6 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .phrase-txt{font-size:.82rem;color:rgba(255,255,255,.3);font-style:italic;font-weight:500;letter-spacing:.02em;animation:phrase-in .6s ease forwards}
 /* WIN/LOSE PHRASE */
 .result-phrase{font-size:.8rem;color:rgba(255,255,255,.25);font-style:italic;text-align:center;margin-top:12px;font-weight:500;letter-spacing:.02em}
-/* FLASHBACK */
-.flashback-wrap{margin-top:20px}
-.flashback-label{font-family:'Orbitron',sans-serif;font-size:.6rem;color:rgba(255,255,255,.2);letter-spacing:.25em;text-align:center;margin-bottom:8px;text-transform:uppercase}
-.flashback-bar-wrap{position:relative}
-.flashback-pcts{display:flex;justify-content:space-between;font-size:.75rem;font-weight:700;margin-top:5px}
-.flashback-a{color:#4ade80}
-.flashback-b{color:#3b82f6}
 .topbar-logo{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .token-pill{display:flex;align-items:center;gap:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.22);border-radius:40px;padding:8px 18px;font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:#fbbf24}
@@ -721,9 +714,8 @@ function App() {
   // Lobby tournament banner
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
 
-  // Flashback animation
-  const [flashbackPct, setFlashbackPct] = useState({ a: 50, b: 50 });
-  const flashbackRef = useRef(null);
+  // Hamburger menu
+  const [showHam, setShowHam] = useState(false);
   // Unlock toast
   const [unlockToast, setUnlockToast] = useState(null);
   const unlockToastTimer = useRef(null);
@@ -786,7 +778,7 @@ function App() {
       checkTournamentBanner();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
       // Phrases rotation
-      phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % LOBBY_PHRASES.length), 5000);
+      phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % WIN_PHRASES.length), 5000);
     } else {
       clearInterval(roomStatsRef.current);
       clearInterval(phraseTimer.current);
@@ -795,11 +787,10 @@ function App() {
   }, [screen]);
 
   // Detect room unlock when tokens change
-  const userTokens = user ? user.tokens : null;
   useEffect(() => {
-    if (!user || screen !== "lobby" || userTokens === null) return;
+    if (!user || screen !== "lobby") return;
     const prev = prevTokRef.current;
-    const curr = userTokens || 0;
+    const curr = user.tokens || 0;
     if (prev > 0 && curr > prev) {
       const justUnlocked = ROOMS.find(r => r.cost > prev && r.cost <= curr);
       if (justUnlocked) {
@@ -809,7 +800,7 @@ function App() {
       }
     }
     prevTokRef.current = curr;
-  }, [userTokens]);
+  }, [user?.tokens]);
 
   async function checkTournamentBanner() {
     try {
@@ -1563,22 +1554,6 @@ function App() {
       const pool = win ? WIN_PHRASES : LOSE_PHRASES;
       setResultPhrase(pool[Math.floor(Math.random() * pool.length)]);
     } else { setResultPhrase(""); }
-
-    // Flashback: animate bar from 50/50 to final result
-    const finalA = total > 0 ? Math.round((cA / total) * 100) : 50;
-    const finalB = 100 - finalA;
-    setFlashbackPct({ a: 50, b: 50 });
-    clearInterval(flashbackRef.current);
-    let step = 0;
-    const steps = 20;
-    flashbackRef.current = setInterval(() => {
-      step++;
-      const t = step / steps;
-      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-      const curA = Math.round(50 + (finalA - 50) * ease);
-      setFlashbackPct({ a: curA, b: 100 - curA });
-      if (step >= steps) clearInterval(flashbackRef.current);
-    }, 60);
     setTimeout(() => checkBadgesProgress(), 2000);
 
     // Save to history
@@ -1917,12 +1892,11 @@ function App() {
                   </>
                 )}
                 <div className="bar-wrap" style={{maxWidth:480,margin:"0 auto 8px"}}>
-                  <div className="flashback-label">◀ FLASHBACK — así se decidió la ronda</div>
                   <div className="bar-heads">
-                    <span style={{color:"#4ade80"}}>{roundData.question_a} · {flashbackPct.a}%</span>
-                    <span style={{color:"#60a5fa"}}>{roundData.question_b} · {flashbackPct.b}%</span>
+                    <span style={{color:"#4ade80"}}>{roundData.question_a} · {Math.round((result.cA||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%</span>
+                    <span style={{color:"#60a5fa"}}>{roundData.question_b} · {Math.round((result.cB||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%</span>
                   </div>
-                  <div className="bar-track"><div className="bar-a" style={{width:`${flashbackPct.a}%`,transition:"width .06s linear"}}></div></div>
+                  <div className="bar-track"><div className="bar-a" style={{width:`${Math.round((result.cA||0)/Math.max((result.cA||0)+(result.cB||0),1)*100)}%`}}></div></div>
                   <div className="bar-total">{(result.cA||0)+(result.cB||0)} votos totales</div>
                 </div>
                 <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
