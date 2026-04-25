@@ -619,14 +619,12 @@ function App() {
   const [user, setUser]       = useState(null);
   const [userEmail, setEmail] = useState("");
 
-  // Dismiss loading screen
+  // Dismiss loading screen immediately when React mounts
   useEffect(() => {
     const el = document.getElementById("app-loading");
     if (el) {
-      setTimeout(() => {
-        el.classList.add("fade-out");
-        setTimeout(() => el.remove(), 500);
-      }, 1800);
+      el.classList.add("fade-out");
+      setTimeout(() => el.remove(), 500);
     }
   }, []);
 
