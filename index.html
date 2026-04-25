@@ -539,12 +539,45 @@ function App() {
     setTimeout(() => setRefCopied(false), 2000);
   }
 
+  const [resetToken, setResetToken] = useState("");
+  const [resetPw, setResetPw] = useState({ pw1: "", pw2: "" });
+  const [resetErr, setResetErr] = useState("");
+  const [resetOk, setResetOk] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+
   useEffect(() => {
+    // Check for password reset token in URL hash
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.replace("#", "?"));
+      const token = params.get("access_token");
+      const type = params.get("type");
+      if (token && type === "recovery") {
+        setResetToken(token);
+        setScreen("reset");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+    // Referral code
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (ref) { setRegRefCode(ref); localStorage.setItem("mm_ref", ref); }
     else { const stored = localStorage.getItem("mm_ref"); if (stored) setRegRefCode(stored); }
   }, []);
+
+  async function doResetPassword() {
+    setResetErr(""); setResetOk("");
+    if (!resetPw.pw1 || !resetPw.pw2) { setResetErr("Completa los dos campos"); return; }
+    if (resetPw.pw1 !== resetPw.pw2) { setResetErr("Las contraseñas no coinciden"); return; }
+    if (resetPw.pw1.length < 6) { setResetErr("Mínimo 6 caracteres"); return; }
+    setResetBusy(true);
+    try {
+      const res = await authPut("user", { password: resetPw.pw1 }, resetToken);
+      if (res.error) { setResetErr(res.error_description || "Error al cambiar la contraseña"); }
+      else { setResetOk("✅ Contraseña cambiada correctamente"); setTimeout(() => setScreen("auth"), 2500); }
+    } catch(e) { setResetErr("Error de conexión"); }
+    setResetBusy(false);
+  }
 
   async function applyReferral(newUserId) {
     const code = regRefCode || localStorage.getItem("mm_ref");
@@ -944,6 +977,37 @@ function App() {
   return (
     <div className="app">
       <style>{CSS}</style>
+
+      {/* ── RESET PASSWORD ── */}
+      {screen === "reset" && (
+        <div className="auth">
+          <div className="logo-main">MINORÍA<br/>MILLONARIA</div>
+          <div className="logo-sub">La minoría siempre gana</div>
+          <div className="auth-card">
+            <div className="auth-heading">NUEVA CONTRASEÑA</div>
+            {resetErr && <div className="err">{resetErr}</div>}
+            {resetOk  && <div className="ok">{resetOk}</div>}
+            <div>
+              <div className="field">
+                <label>Nueva contraseña</label>
+                <input type="password" placeholder="••••••••" value={resetPw.pw1}
+                  onChange={e => setResetPw(p => ({...p, pw1: e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Repetir contraseña</label>
+                <input type="password" placeholder="••••••••" value={resetPw.pw2}
+                  onChange={e => setResetPw(p => ({...p, pw2: e.target.value}))} />
+              </div>
+              <button className="btn-gold" disabled={resetBusy} onClick={doResetPassword}>
+                {resetBusy ? "GUARDANDO..." : "GUARDAR NUEVA CONTRASEÑA"}
+              </button>
+            </div>
+            <div className="auth-switch">
+              <span onClick={() => setScreen("auth")} style={{cursor:"pointer"}}>← Volver al inicio</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── AUTH ── */}
       {screen === "auth" && (
