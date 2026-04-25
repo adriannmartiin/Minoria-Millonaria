@@ -786,7 +786,7 @@ function App() {
       checkTournamentBanner();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
       // Phrases rotation
-      phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % WIN_PHRASES.length), 5000);
+      phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % LOBBY_PHRASES.length), 5000);
     } else {
       clearInterval(roomStatsRef.current);
       clearInterval(phraseTimer.current);
@@ -795,10 +795,11 @@ function App() {
   }, [screen]);
 
   // Detect room unlock when tokens change
+  const userTokens = user ? user.tokens : null;
   useEffect(() => {
-    if (!user || screen !== "lobby") return;
+    if (!user || screen !== "lobby" || userTokens === null) return;
     const prev = prevTokRef.current;
-    const curr = user.tokens || 0;
+    const curr = userTokens || 0;
     if (prev > 0 && curr > prev) {
       const justUnlocked = ROOMS.find(r => r.cost > prev && r.cost <= curr);
       if (justUnlocked) {
@@ -808,7 +809,7 @@ function App() {
       }
     }
     prevTokRef.current = curr;
-  }, [user?.tokens]);
+  }, [userTokens]);
 
   async function checkTournamentBanner() {
     try {
