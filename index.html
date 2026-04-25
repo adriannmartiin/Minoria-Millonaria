@@ -25,10 +25,36 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100vh;background:#060609}
 #root{min-height:100vh}
+/* LOADING SCREEN */
+.loading-app{position:fixed;inset:0;background:#060609;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+.loading-app.fade-out{opacity:0;pointer-events:none}
+@keyframes coin-spin{0%{transform:rotateY(0deg)}100%{transform:rotateY(360deg)}}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.15);opacity:.6}}
+@keyframes load-bar{0%{width:0%}100%{width:100%}}
+@keyframes fade-up{0%{opacity:0;transform:translateY(20px)}100%{opacity:1;transform:translateY(0)}}
+.loading-coin{width:90px;height:90px;animation:coin-spin 1.8s ease-in-out infinite;transform-style:preserve-3d}
+.loading-ring{width:120px;height:120px;border-radius:50%;border:2px solid rgba(251,191,36,.2);position:absolute;animation:pulse-ring 2s ease infinite}
+.loading-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:120px;height:120px;margin-bottom:32px}
+.loading-title{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:.06em;animation:fade-up .6s ease .2s both}
+.loading-sub{font-size:.7rem;letter-spacing:.5em;color:rgba(251,191,36,.4);text-transform:uppercase;margin-top:8px;animation:fade-up .6s ease .4s both}
+.loading-bar-wrap{width:200px;height:3px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;margin-top:32px;animation:fade-up .6s ease .6s both}
+.loading-bar-fill{height:100%;background:linear-gradient(90deg,#fbbf24,#d97706);border-radius:100px;animation:load-bar 1.8s ease forwards}
 </style>
 </head>
 <body>
 <div id="root"></div>
+<!-- Loading screen (shown before React hydrates) -->
+<div id="app-loading" class="loading-app">
+  <div class="loading-wrap">
+    <div class="loading-ring"></div>
+    <img src="/coin.png" class="loading-coin" style="width:80px;height:80px;object-fit:contain" />
+  </div>
+  <div class="loading-title">MINORÍA<br/>MILLONARIA</div>
+  <div class="loading-sub">La minoría siempre gana</div>
+  <div class="loading-bar-wrap">
+    <div class="loading-bar-fill"></div>
+  </div>
+</div>
 <script type="text/babel">
 const { useState, useRef, useEffect } = React;
 
@@ -592,6 +618,17 @@ function App() {
   const [busy, setBusy]       = useState(false);
   const [user, setUser]       = useState(null);
   const [userEmail, setEmail] = useState("");
+
+  // Dismiss loading screen
+  useEffect(() => {
+    const el = document.getElementById("app-loading");
+    if (el) {
+      setTimeout(() => {
+        el.classList.add("fade-out");
+        setTimeout(() => el.remove(), 500);
+      }, 1800);
+    }
+  }, []);
 
   // Room color theme
   useEffect(() => {
