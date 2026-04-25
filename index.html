@@ -160,6 +160,41 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .ok{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.28);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#86efac;margin-bottom:14px;text-align:center}
 /* TOPBAR */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:36px;flex-wrap:wrap;gap:10px}
+/* HAMBURGER MENU */
+.hamburger{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:8px 12px;color:rgba(255,255,255,.55);cursor:pointer;font-size:1.1rem;transition:all .2s;position:relative}
+.hamburger:hover{background:rgba(255,255,255,.08)}
+.ham-drawer{position:fixed;top:0;right:0;width:260px;height:100vh;background:#0a0a14;border-left:1px solid rgba(255,255,255,.08);z-index:9998;display:flex;flex-direction:column;padding:24px;gap:8px;box-shadow:-20px 0 60px rgba(0,0,0,.6)}
+.ham-overlay{position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,.5)}
+.ham-title{font-family:'Orbitron',sans-serif;font-size:.7rem;color:rgba(255,255,255,.25);letter-spacing:.2em;margin-bottom:8px;margin-top:8px}
+.ham-btn{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px;color:rgba(255,255,255,.6);font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;text-align:left}
+.ham-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.ham-close{margin-top:auto;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:12px;color:#f87171;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;cursor:pointer;letter-spacing:.1em;text-align:center}
+/* ROOM ANIMATIONS */
+@keyframes plant-grow{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.08) rotate(2deg)}}
+@keyframes lightning-pulse{0%,100%{opacity:1;filter:drop-shadow(0 0 4px #60a5fa)}50%{opacity:.7;filter:drop-shadow(0 0 12px #60a5fa)}}
+@keyframes crown-sparkle{0%,100%{filter:drop-shadow(0 0 3px #a78bfa)}50%{filter:drop-shadow(0 0 10px #a78bfa) brightness(1.2)}}
+@keyframes diamond-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes cosmos-float{0%,100%{transform:translateY(0) scale(1);filter:drop-shadow(0 0 6px #fbbf24)}50%{transform:translateY(-4px) scale(1.05);filter:drop-shadow(0 0 14px #fbbf24)}}
+.room-icon-starter{animation:plant-grow 2.5s ease-in-out infinite}
+.room-icon-medium{animation:lightning-pulse 1.5s ease-in-out infinite}
+.room-icon-prime{animation:crown-sparkle 2s ease-in-out infinite}
+.room-icon-vip{animation:diamond-spin 8s linear infinite;display:inline-block}
+.room-icon-elite{animation:cosmos-float 2s ease-in-out infinite}
+/* ROOM LOCK */
+.room-locked-msg{font-size:.72rem;color:rgba(255,255,255,.3);margin-top:8px;font-weight:600;letter-spacing:.04em}
+.room-locked-msg span{color:#fbbf24}
+/* UNLOCK TOAST */
+@keyframes unlock-in{0%{transform:translateY(40px) scale(.9);opacity:0}60%{transform:translateY(-6px) scale(1.04)}100%{transform:translateY(0) scale(1);opacity:1}}
+.unlock-toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(74,222,128,.18),rgba(74,222,128,.06));border:1px solid rgba(74,222,128,.4);border-radius:18px;padding:18px 28px;z-index:9996;text-align:center;animation:unlock-in .5s cubic-bezier(.17,.67,.35,1.3) forwards;box-shadow:0 8px 32px rgba(74,222,128,.2);pointer-events:none}
+.unlock-toast-icon{font-size:2rem;margin-bottom:6px}
+.unlock-toast-title{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:900;color:#4ade80;letter-spacing:.06em;margin-bottom:4px}
+.unlock-toast-sub{font-size:.78rem;color:rgba(255,255,255,.5)}
+/* PHRASES BANNER */
+.phrases-banner{background:rgba(255,255,255,.02);border-top:1px solid rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.04);padding:12px 24px;text-align:center;margin-top:32px}
+@keyframes phrase-in{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+.phrase-txt{font-size:.82rem;color:rgba(255,255,255,.3);font-style:italic;font-weight:500;letter-spacing:.02em;animation:phrase-in .6s ease forwards}
+/* WIN/LOSE PHRASE */
+.result-phrase{font-size:.8rem;color:rgba(255,255,255,.25);font-style:italic;text-align:center;margin-top:12px;font-weight:500;letter-spacing:.02em}
 .topbar-logo{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .token-pill{display:flex;align-items:center;gap:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.22);border-radius:40px;padding:8px 18px;font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:#fbbf24}
@@ -598,6 +633,33 @@ function getWeekMissions() {
   return shuffled.slice(0, 4);
 }
 
+const LOBBY_PHRASES = [
+  "Si todos piensan igual, nadie está pensando.",
+  "La mayoría vota con el corazón. La minoría, con la cabeza.",
+  "Ser diferente no es un defecto, es una ventaja.",
+  "El rebaño siempre pierde ante el lobo solitario.",
+  "Cuestiona lo obvio. Gana lo inesperado.",
+  "El consenso es la trampa más grande de la humanidad.",
+  "Mientras todos miran a la izquierda, tú mira a la derecha.",
+  "La verdad no se vota. Pero aquí sí se paga.",
+  "Pensar como los demás no tiene premio.",
+  "La minoría no se equivoca. Solo va por delante.",
+];
+const WIN_PHRASES = [
+  "Sabías lo que los demás no veían.",
+  "Pensar diferente tiene recompensa.",
+  "Eres exactamente lo que este juego necesita.",
+  "La minoría manda. Siempre lo ha hecho.",
+  "Mientras todos zurdaban, tú diestrabas.",
+];
+const LOSE_PHRASES = [
+  "Esta vez la masa te absorbió. Próxima ronda.",
+  "Equivocarse es parte del proceso. Vuelve.",
+  "Hoy eras mayoría. Mañana, minoría ganadora.",
+  "El rebaño gana a veces. Pero no siempre.",
+  "La derrota es solo información. Úsala.",
+];
+
 function App() {
   const [screen, setScreen]   = useState("auth");
   const [mode, setMode]       = useState("register");
@@ -652,8 +714,17 @@ function App() {
   // Lobby tournament banner
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
 
-  // Missions
-  const [missions, setMissions] = useState([]);
+  // Hamburger menu
+  const [showHam, setShowHam] = useState(false);
+  // Unlock toast
+  const [unlockToast, setUnlockToast] = useState(null);
+  const unlockToastTimer = useRef(null);
+  const prevTokRef = useRef(0);
+  // Phrases
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const phraseTimer = useRef(null);
+  // Win/lose phrase
+  const [resultPhrase, setResultPhrase] = useState("");
   const [missionCompletions, setMissionCompletions] = useState([]);
   const [missionStats, setMissionStats] = useState({});
 
@@ -706,11 +777,30 @@ function App() {
       checkAnnouncements();
       checkTournamentBanner();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
+      // Phrases rotation
+      phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % WIN_PHRASES.length), 5000);
     } else {
       clearInterval(roomStatsRef.current);
+      clearInterval(phraseTimer.current);
     }
-    return () => clearInterval(roomStatsRef.current);
+    return () => { clearInterval(roomStatsRef.current); clearInterval(phraseTimer.current); };
   }, [screen]);
+
+  // Detect room unlock when tokens change
+  useEffect(() => {
+    if (!user || screen !== "lobby") return;
+    const prev = prevTokRef.current;
+    const curr = user.tokens || 0;
+    if (prev > 0 && curr > prev) {
+      const justUnlocked = ROOMS.find(r => r.cost > prev && r.cost <= curr);
+      if (justUnlocked) {
+        setUnlockToast(justUnlocked);
+        clearTimeout(unlockToastTimer.current);
+        unlockToastTimer.current = setTimeout(() => setUnlockToast(null), 4000);
+      }
+    }
+    prevTokRef.current = curr;
+  }, [user?.tokens]);
 
   async function checkTournamentBanner() {
     try {
@@ -1460,7 +1550,10 @@ function App() {
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, profileUpdate, tokenRef.current);
 
     setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak });
-    // Check badges after every game
+    if (!tie && myVote !== null) {
+      const pool = win ? WIN_PHRASES : LOSE_PHRASES;
+      setResultPhrase(pool[Math.floor(Math.random() * pool.length)]);
+    } else { setResultPhrase(""); }
     setTimeout(() => checkBadgesProgress(), 2000);
 
     // Save to history
@@ -1589,18 +1682,30 @@ function App() {
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
               <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
-              <button className="ghost-btn" onClick={() => { loadTournaments(); }}>🏆 Torneos</button>
-              <button className="ghost-btn" onClick={loadMissions}>🎯 Misiones</button>
-              <button className="ghost-btn" onClick={() => setScreen("redeem")}>💰 Canjear</button>
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
-              <button className="ghost-btn" onClick={loadRanking}>📊 Ranking</button>
-              <button className="ghost-btn" onClick={loadBadges}>🎖️ Logros</button>
               <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
+              <button className="hamburger" onClick={() => setShowHam(true)}>☰</button>
             </div>
           </div>
+
+          {/* Hamburger drawer */}
+          {showHam && (
+            <>
+              <div className="ham-overlay" onClick={() => setShowHam(false)} />
+              <div className="ham-drawer">
+                <div className="ham-title">MENÚ</div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); loadTournaments(); }}>🏆 <span>Torneos</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); loadMissions(); }}>🎯 <span>Misiones</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("redeem"); }}>💰 <span>Canjear premios</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); loadRanking(); }}>📊 <span>Ranking</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
+                <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
+              </div>
+            </>
+          )}
           {showNotif && (
             <>
               <div style={{position:"fixed",inset:0,zIndex:8999}} onClick={() => setShowNotif(false)} />
@@ -1635,30 +1740,55 @@ function App() {
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
           </div>
           <div className="rooms">
-            {ROOMS.map(r => (
-              <div key={r.id}
-                className="room-card"
-                style={{ border: `1px solid ${r.color}33`, boxShadow: user?.tokens >= r.cost ? r.glow : "none", opacity: user?.tokens < r.cost ? 0.5 : 1 }}
-                onClick={() => enterRoom(r)}>
-                <span className="room-icon">{r.icon}</span>
-                <div className="room-name" style={{ color: r.color }}>{r.name}</div>
-                <div className="room-desc">{r.desc}</div>
-                <div className="room-bet">Apuesta: <em style={{ color: r.color }}>{r.cost.toLocaleString()} {COIN}</em></div>
-                {roomStats[r.id] && (
-                  <div className={`room-players${roomStats[r.id].active ? " active" : ""}`}>
-                    {roomStats[r.id].active ? `👥 ${roomStats[r.id].players} jugando` : "⏳ Sin jugadores"}
-                  </div>
-                )}
-                {roomStats[r.id]?.nextIn > 0 && (
-                  <div className="room-timer">🔄 Nueva ronda en {roomStats[r.id].nextIn}s</div>
-                )}
-              </div>
-            ))}
+            {ROOMS.map(r => {
+              const locked = (user?.tokens || 0) < r.cost;
+              const missing = r.cost - (user?.tokens || 0);
+              const iconClass = `room-icon room-icon-${r.id}`;
+              return (
+                <div key={r.id}
+                  className="room-card"
+                  style={{ border: `1px solid ${locked ? "rgba(255,255,255,.06)" : r.color+"44"}`, boxShadow: !locked ? r.glow : "none", opacity: locked ? 0.55 : 1 }}
+                  onClick={() => enterRoom(r)}>
+                  <span className={iconClass}>{locked ? "🔒" : r.icon}</span>
+                  <div className="room-name" style={{ color: locked ? "rgba(255,255,255,.3)" : r.color }}>{r.name}</div>
+                  <div className="room-desc">{r.desc}</div>
+                  <div className="room-bet">Apuesta: <em style={{ color: locked ? "rgba(255,255,255,.2)" : r.color }}>{r.cost.toLocaleString()} {COIN}</em></div>
+                  {locked
+                    ? <div className="room-locked-msg">Te faltan <span>{missing.toLocaleString()}</span> tokens</div>
+                    : <>
+                        {roomStats[r.id] && (
+                          <div className={`room-players${roomStats[r.id].active ? " active" : ""}`}>
+                            {roomStats[r.id].active ? `👥 ${roomStats[r.id].players} jugando` : "⏳ Sin jugadores"}
+                          </div>
+                        )}
+                        {roomStats[r.id]?.nextIn > 0 && (
+                          <div className="room-timer">🔄 Nueva ronda en {roomStats[r.id].nextIn}s</div>
+                        )}
+                      </>
+                  }
+                </div>
+              );
+            })}
           </div>
-          <div className="footer-links" style={{marginTop:40}}>
+
+          {/* Phrases banner */}
+          <div className="phrases-banner">
+            <div key={phraseIdx} className="phrase-txt">"{LOBBY_PHRASES[phraseIdx % LOBBY_PHRASES.length]}"</div>
+          </div>
+
+          <div className="footer-links" style={{marginTop:24}}>
             <span className="footer-link" onClick={() => setScreen("terms")}>Términos y Condiciones</span>
             <span className="footer-link" onClick={() => setScreen("privacy")}>Política de Privacidad</span>
           </div>
+
+          {/* Unlock toast */}
+          {unlockToast && (
+            <div className="unlock-toast">
+              <div className="unlock-toast-icon">{unlockToast.icon}</div>
+              <div className="unlock-toast-title">¡SALA DESBLOQUEADA!</div>
+              <div className="unlock-toast-sub">Ya puedes entrar a <strong style={{color:unlockToast.color}}>{unlockToast.name}</strong></div>
+            </div>
+          )}
         </div>
       )}
       {screen === "game" && room && (
@@ -1770,6 +1900,7 @@ function App() {
                   <div className="bar-total">{(result.cA||0)+(result.cB||0)} votos totales</div>
                 </div>
                 <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
+                {resultPhrase && <div className="result-phrase">"{resultPhrase}"</div>}
                 <button className="r-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>CAMBIAR SALA</button>
               </div>
             )}
