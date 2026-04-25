@@ -684,16 +684,18 @@ function App() {
 
   async function loadRoomStats() {
     try {
-      const rooms = await dbGet("game_rooms", "select=room_id,started_at,round_id", KEY);
-      const votes = await dbGet("round_votes", "select=room_id,round_id", KEY);
+      const rooms = await dbGet("game_rooms", "select=room_id,round_id,started_at", KEY);
       const stats = {};
-      ROOMS.forEach(r => {
+      for (const r of ROOMS) {
         const row = rooms && rooms.find(x => x.room_id === r.id);
-        const elapsed = row ? (Date.now() - new Date(row.started_at).getTime()) / 1000 : null;
-        const nextIn = elapsed !== null ? Math.max(0, Math.ceil(ROUND_TOTAL - elapsed)) : null;
-        const players = votes ? votes.filter(v => v.room_id === r.id && row && v.round_id === row.round_id).length : 0;
+        if (!row) { stats[r.id] = { players: 0, nextIn: null, active: false }; continue; }
+        const elapsed = (Date.now() - new Date(row.started_at).getTime()) / 1000;
+        const nextIn = Math.max(0, Math.ceil(ROUND_TOTAL - elapsed));
+        // Count votes in the current round only
+        const votes = await dbGet("round_votes", `round_id=eq.${row.round_id}&select=user_id`, KEY);
+        const players = Array.isArray(votes) ? votes.length : 0;
         stats[r.id] = { players, nextIn, active: players > 0 };
-      });
+      }
       setRoomStats(stats);
     } catch(e) {}
   }
@@ -2243,12 +2245,6 @@ function App() {
                 <div className="redeem-lock">🔒 PRÓXIMAMENTE</div>
               </div>
             ))}
-          </div>
-          <div className="redeem-info">
-            <strong style={{color:"rgba(255,255,255,.6)"}}>¿Cuándo podré canjear?</strong> Muy pronto. Todos tus tokens actuales contarán.<br/><br/>
-            <strong style={{color:"rgba(255,255,255,.6)"}}>¿Cómo recibiré el premio?</strong> En forma de tarjeta regalo Amazon enviada por email en menos de 48h.<br/><br/>
-            <strong style={{color:"rgba(255,255,255,.6)"}}>¿Cuánto vale 1 token?</strong> Cuanto más canjeas de golpe, más vale. El mejor ratio es 50€ — <strong style={{color:"#4ade80"}}>14.000 tokens/€</strong>.<br/><br/>
-            <strong style={{color:"rgba(255,255,255,.6)"}}>¿Mínimo de canje?</strong> 5€ = 100.000 tokens.
           </div>
         </div>
       )}
