@@ -569,6 +569,39 @@ function AdminStats({ sbUrl, sbKey }) {
       <button onClick={loadStats} style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 16px",color:"rgba(255,255,255,.4)",fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",cursor:"pointer",letterSpacing:".1em"}}>🔄 ACTUALIZAR</button>
 }
 
+// ── MISSIONS POOL ─────────────────────────────────────────────────────────────
+const MISSION_POOL = [
+  { id:"w3",  title:"Triple victoria",    desc:"Gana 3 partidas esta semana",        cat:"wins",   req:3,  reward:150, icon:"🏆" },
+  { id:"w10", title:"Campeón semanal",    desc:"Gana 10 partidas esta semana",       cat:"wins",   req:10, reward:400, icon:"👑" },
+  { id:"w25", title:"Imparable",          desc:"Gana 25 partidas esta semana",       cat:"wins",   req:25, reward:800, icon:"⚡" },
+  { id:"g5",  title:"Calentando",         desc:"Juega 5 partidas esta semana",       cat:"games",  req:5,  reward:100, icon:"🎮" },
+  { id:"g20", title:"En forma",           desc:"Juega 20 partidas esta semana",      cat:"games",  req:20, reward:300, icon:"💪" },
+  { id:"g50", title:"Máquina de jugar",   desc:"Juega 50 partidas esta semana",      cat:"games",  req:50, reward:700, icon:"🤖" },
+  { id:"s3",  title:"En racha",           desc:"Consigue una racha de 3 victorias",  cat:"streak", req:3,  reward:200, icon:"🔥" },
+  { id:"s5",  title:"Intratable",         desc:"Consigue una racha de 5 victorias",  cat:"streak", req:5,  reward:500, icon:"💥" },
+  { id:"r1",  title:"Trae un amigo",      desc:"Invita a 1 persona esta semana",     cat:"refs",   req:1,  reward:300, icon:"🤝" },
+  { id:"p",   title:"Prueba la sala VIP", desc:"Juega al menos 1 partida en VIP",    cat:"vip",    req:1,  reward:250, icon:"💎" },
+  { id:"e",   title:"La sala Elite",      desc:"Juega al menos 1 partida en Elite",  cat:"elite",  req:1,  reward:350, icon:"💠" },
+  { id:"ss",  title:"Sala Starter",       desc:"Gana 5 partidas en sala Starter",    cat:"starter",req:5,  reward:120, icon:"🌱" },
+];
+
+function getWeekKey() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
+  return `${now.getFullYear()}-W${week}`;
+}
+
+function getWeekMissions() {
+  const week = parseInt(getWeekKey().split("W")[1]);
+  const shuffled = [...MISSION_POOL].sort((a,b) => {
+    const ha = (week * 31 + a.id.charCodeAt(0)) % 100;
+    const hb = (week * 31 + b.id.charCodeAt(0)) % 100;
+    return ha - hb;
+  });
+  return shuffled.slice(0, 4);
+}
+
 function App() {
   const [screen, setScreen]   = useState("auth");
   const [mode, setMode]       = useState("register");
@@ -1022,39 +1055,6 @@ function App() {
   }
 
   // ── MISSIONS ─────────────────────────────────────────────────────────────
-  const MISSION_POOL = [
-    { id:"w3",  title:"Triple victoria",    desc:"Gana 3 partidas esta semana",        cat:"wins",  req:3,   reward:150,  icon:"🏆" },
-    { id:"w10", title:"Campeón semanal",    desc:"Gana 10 partidas esta semana",       cat:"wins",  req:10,  reward:400,  icon:"👑" },
-    { id:"w25", title:"Imparable",          desc:"Gana 25 partidas esta semana",       cat:"wins",  req:25,  reward:800,  icon:"⚡" },
-    { id:"g5",  title:"Calentando",         desc:"Juega 5 partidas esta semana",       cat:"games", req:5,   reward:100,  icon:"🎮" },
-    { id:"g20", title:"En forma",           desc:"Juega 20 partidas esta semana",      cat:"games", req:20,  reward:300,  icon:"💪" },
-    { id:"g50", title:"Máquina de jugar",   desc:"Juega 50 partidas esta semana",      cat:"games", req:50,  reward:700,  icon:"🤖" },
-    { id:"s3",  title:"En racha",           desc:"Consigue una racha de 3 victorias",  cat:"streak",req:3,   reward:200,  icon:"🔥" },
-    { id:"s5",  title:"Intratable",         desc:"Consigue una racha de 5 victorias",  cat:"streak",req:5,   reward:500,  icon:"💥" },
-    { id:"r1",  title:"Trae un amigo",      desc:"Invita a 1 persona esta semana",     cat:"refs",  req:1,   reward:300,  icon:"🤝" },
-    { id:"p",   title:"Prueba la sala VIP", desc:"Juega al menos 1 partida en VIP",    cat:"vip",   req:1,   reward:250,  icon:"💎" },
-    { id:"e",   title:"La sala Elite",      desc:"Juega al menos 1 partida en Elite",  cat:"elite", req:1,   reward:350,  icon:"💠" },
-    { id:"s",   title:"Sala Starter",       desc:"Gana 5 partidas en sala Starter",    cat:"starter",req:5,  reward:120,  icon:"🌱" },
-  ];
-
-  function getWeekKey() {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-    return `${now.getFullYear()}-W${week}`;
-  }
-
-  function getWeekMissions() {
-    const week = parseInt(getWeekKey().split("W")[1]);
-    // Deterministic shuffle based on week number
-    const shuffled = [...MISSION_POOL].sort((a,b) => {
-      const ha = (week * 31 + a.id.charCodeAt(0)) % 100;
-      const hb = (week * 31 + b.id.charCodeAt(0)) % 100;
-      return ha - hb;
-    });
-    return shuffled.slice(0, 4);
-  }
-
   async function loadMissions() {
     const weekKey = getWeekKey();
     const weekStart = new Date(); weekStart.setHours(0,0,0,0);
