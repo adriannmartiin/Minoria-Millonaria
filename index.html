@@ -661,6 +661,8 @@ function App() {
     } catch(e) { setErr("Error de conexión"); }
     setBusy(false);
   }
+
+  function doLogout() {
     stopGame();
     tokenRef.current = "";
     setUser(null);
