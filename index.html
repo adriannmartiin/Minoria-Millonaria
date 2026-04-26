@@ -138,7 +138,7 @@ function soundLose()  { playTone(320,'sawtooth',0.15,0.2); playTone(240,'sawtoot
 function soundBonus() { [440,550,660,880].forEach((f,i) => playTone(f,'sine',0.2,0.3,i*0.08)); }
 
 // ── DAILY BONUS ───────────────────────────────────────────────────────────────
-const DAILY_BONUS = [100, 75, 75, 200, 75, 75, 500];
+const DAILY_BONUS = [50, 50, 75, 100, 75, 100, 250];
 
 const CSS = `
 body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
@@ -238,6 +238,7 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .timer-ring{position:relative;width:76px;height:76px}
 .timer-ring svg{transform:rotate(-90deg)}
 @keyframes pulse-red{0%,100%{transform:scale(1);filter:drop-shadow(0 0 4px #ef4444)}50%{transform:scale(1.1);filter:drop-shadow(0 0 12px #ef4444)}}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.4)}50%{box-shadow:0 0 0 6px rgba(251,191,36,0)}}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.45rem;font-weight:900;color:#fff}
 .question{font-size:clamp(1.1rem,3vw,1.5rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
@@ -421,6 +422,28 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .tourn-banner-txt{font-size:.88rem;color:#fbbf24;font-weight:700}
 .tourn-banner-sub{font-size:.75rem;color:rgba(255,255,255,.4);margin-top:3px}
 .tourn-banner-btn{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 16px;color:#fbbf24;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.08em}
+/* SHIELD */
+@keyframes shield-pulse{0%,100%{filter:drop-shadow(0 0 6px #60a5fa) brightness(1)}50%{filter:drop-shadow(0 0 16px #60a5fa) brightness(1.3)}}
+@keyframes shield-pulse-full{0%,100%{filter:drop-shadow(0 0 6px #4ade80) brightness(1)}50%{filter:drop-shadow(0 0 16px #4ade80) brightness(1.3)}}
+.shield-lobby{max-width:1100px;margin:0 auto 20px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.shield-icon-big{font-size:2rem;flex-shrink:0}
+.shield-info-col{flex:1;min-width:140px}
+.shield-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.12em;margin-bottom:3px}
+.shield-status{font-size:.8rem;font-weight:600}
+.shield-status.none{color:rgba(255,255,255,.3)}
+.shield-status.half{color:#60a5fa}
+.shield-status.full{color:#4ade80}
+.shield-status.cd{color:rgba(255,255,255,.2)}
+.shield-ad-btn{display:flex;align-items:center;gap:6px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);border-radius:10px;padding:9px 14px;color:#60a5fa;font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;letter-spacing:.06em}
+.shield-ad-btn:hover{background:rgba(96,165,250,.2)}
+.shield-ad-btn.full-prot{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:#4ade80}
+.shield-ad-btn.full-prot:hover{background:rgba(74,222,128,.2)}
+.shield-ad-btn.disabled{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);color:rgba(255,255,255,.2);cursor:not-allowed}
+.shield-how-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;color:rgba(255,255,255,.3);font-size:.72rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.shield-how-btn:hover{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.5)}
+/* BONUS DOUBLE */
+.bonus-double-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:12px;padding:12px 20px;color:#fbbf24;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.06em;width:100%;margin-top:12px}
+.bonus-double-btn:hover{background:rgba(251,191,36,.15)}
 /* VOTE MSG */
 .vote-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,20,.95);border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:14px 24px;z-index:9995;font-size:.82rem;color:rgba(255,255,255,.7);font-weight:600;text-align:center;pointer-events:none;animation:toast-in .3s ease}
 /* ROOM COLOR THEME */
@@ -951,6 +974,7 @@ function App() {
     setBonusDay(nextDay + 1);
     setBonusDayIdx(nextDay);
     setShowBonus(true);
+    setBonusDoubleAvailable(true);
     soundBonus();
   }
 
@@ -1540,6 +1564,19 @@ function App() {
   const [noTokRoom, setNoTokRoom] = useState(null);
   const [adCountdown, setAdCountdown] = useState(0);
   const [adWatched, setAdWatched] = useState(false);
+  // Shield (0=none, 1=half, 2=full)
+  const [shieldLevel, setShieldLevel] = useState(0);
+  const [shieldCooldown, setShieldCooldown] = useState(0);
+  const [shieldAdsWatched, setShieldAdsWatched] = useState(0); // ads watched in current session
+  const [shieldAdPlaying, setShieldAdPlaying] = useState(false);
+  const [shieldAdCountdown, setShieldAdCountdown] = useState(0);
+  const [showShieldInfo, setShowShieldInfo] = useState(false);
+  const shieldAdTimer = useRef(null);
+  // Bonus double
+  const [bonusDoubleAvailable, setBonusDoubleAvailable] = useState(false);
+  const [bonusDoubleAdPlaying, setBonusDoubleAdPlaying] = useState(false);
+  const [bonusDoubleAdCountdown, setBonusDoubleAdCountdown] = useState(0);
+  const bonusDoubleTimer = useRef(null);
   const adRef = useRef(null);
 
   function watchAd() {
@@ -1565,6 +1602,62 @@ function App() {
     setAdWatched(false);
     setAdCountdown(0);
   }
+
+  // ── SHIELD ────────────────────────────────────────────────────────────────
+  function watchShieldAd() {
+    if (shieldAdPlaying) return;
+    setShieldAdPlaying(true); setShieldAdCountdown(5);
+    let t = 5;
+    shieldAdTimer.current = setInterval(() => {
+      t--; setShieldAdCountdown(t);
+      if (t <= 0) {
+        clearInterval(shieldAdTimer.current);
+        setShieldAdPlaying(false);
+        const watched = shieldAdsWatched + 1;
+        setShieldAdsWatched(watched);
+        setShieldLevel(Math.min(watched, 2)); // 1 ad = level 1, 2 ads = level 2
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
+  }
+
+  function shieldCooldownLeft() {
+    const diff = shieldCooldown - Date.now();
+    if (diff <= 0) return "";
+    const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  function resetShieldAfterRound(won) {
+    if (shieldLevel > 0) {
+      if (!won) {
+        // Shield used on loss → 3h cooldown
+        setShieldCooldown(Date.now() + 3 * 3600000);
+      }
+      // Either way shield is consumed after a round
+      setShieldLevel(0);
+      setShieldAdsWatched(0);
+    }
+  }
+
+  // ── BONUS DOUBLE ──────────────────────────────────────────────────────────
+  function watchBonusDoubleAd() {
+    setBonusDoubleAdPlaying(true); setBonusDoubleAdCountdown(5);
+    let t = 5;
+    bonusDoubleTimer.current = setInterval(() => {
+      t--; setBonusDoubleAdCountdown(t);
+      if (t <= 0) {
+        clearInterval(bonusDoubleTimer.current);
+        setBonusDoubleAdPlaying(false); setBonusDoubleAvailable(false);
+        const extra = bonusAmount;
+        const newTok = tokRef.current + extra;
+        saveTok(newTok);
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
+  }
+
   function stopGame() {
     clearInterval(pollRef.current);
     clearTimeout(pollRef.current);
@@ -1717,10 +1810,18 @@ function App() {
           win = true; resultStr = "win";
           delta = Math.floor(prizePool / minC) - r.cost;
         } else {
-          delta = -r.cost; resultStr = "lose";
+          if (shieldLevel === 2) {
+            delta = 0; resultStr = "lose"; // full protection
+          } else if (shieldLevel === 1) {
+            delta = -Math.floor(r.cost / 2); resultStr = "lose"; // half protection
+          } else {
+            delta = -r.cost; resultStr = "lose";
+          }
         }
       }
     }
+    // Consume shield after round
+    resetShieldAfterRound(win);
 
     const newTok = Math.max(0, tokRef.current + delta);
 
@@ -1748,7 +1849,7 @@ function App() {
     setUser(u => ({ ...u, tokens: newTok }));
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, profileUpdate, tokenRef.current);
 
-    setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak });
+    setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak, shieldUsed: !win && shieldLevel > 0 ? shieldLevel : 0 });
     if (!tie && myVote !== null) {
       const pool = win ? WIN_PHRASES : LOSE_PHRASES;
       setResultPhrase(pool[Math.floor(Math.random() * pool.length)]);
@@ -1896,7 +1997,10 @@ function App() {
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
-              <button className="ghost-btn" onClick={() => setShowTutorial(true)}>❓ Cómo funciona</button>
+              <button className="ghost-btn" style={{
+                animation: (user?.tokens === 2500 || user?.tokens === 3500) ? "pulse-gold 2s ease-in-out 6" : "none",
+                borderColor: (user?.tokens === 2500 || user?.tokens === 3500) ? "rgba(251,191,36,.5)" : undefined
+              }} onClick={() => setShowTutorial(true)}>❓ Cómo funciona</button>
               <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
               <button className="hamburger" onClick={() => setShowHam(true)}>☰</button>
@@ -1947,44 +2051,39 @@ function App() {
               </div>
             );
           })()}
-          {/* Season countdown bar */}
-          <div className="season-bar">
-            <div>
-              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 26 DE MAYO</div>
-              <div className="season-title">Los jugadores con más tokens al final de temporada recibirán premios reales</div>
-            </div>
-            <div className="season-timer">{seasonCountdown}</div>
-          </div>
-
-          {/* Top players panel */}
-          {/* Compact top players widget - top left */}
-          <div style={{maxWidth:1100,margin:"0 auto 24px",display:"flex",alignItems:"flex-start",gap:16}}>
-            <div style={{background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"12px 14px",width:260,flexShrink:0}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".62rem",fontWeight:700,color:"rgba(255,255,255,.3)",letterSpacing:".15em"}}>🏆 TOP TEMPORADA</span>
-                <button onClick={()=>{setShowAllTop(v=>!v);}} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontFamily:"'Orbitron',sans-serif",fontSize:".6rem",fontWeight:700}}>
-                  {showAllTop?"▲":"▼"}
-                </button>
+          {/* Unified season + top players section */}
+          <div style={{maxWidth:1100,margin:"0 auto 28px",background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.07)",borderRadius:18,padding:"20px 24px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:24,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:220}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:6}}>⏱ TEMPORADA 1 · FINALIZA EL 26 DE MAYO</div>
+                <div style={{fontSize:".85rem",color:"rgba(255,255,255,.45)",marginBottom:12,fontWeight:500,lineHeight:1.5}}>Los jugadores con más tokens al final recibirán premios reales</div>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24",letterSpacing:".06em",textShadow:"0 0 20px rgba(251,191,36,.4)"}}>{seasonCountdown}</div>
               </div>
-              {(showAllTop ? topPlayers.slice(0,50) : topPlayers.slice(0,3)).map((p,i) => {
-                const isMe = p.id === userIdRef.current;
-                const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
-                const posColor = i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"rgba(255,255,255,.2)";
-                return (
-                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:isMe?"rgba(251,191,36,.07)":i===0?"rgba(251,191,36,.05)":i===1?"rgba(148,163,184,.05)":i===2?"rgba(180,83,9,.05)":"transparent",marginBottom:2}}>
-                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:900,color:posColor,width:20,flexShrink:0,textAlign:"center"}}>{medal}</span>
-                    <span style={{flex:1,fontSize:".8rem",fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120}}>{p.username}{isMe&&<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}> TÚ</span>}</span>
-                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(p.tokens||0).toLocaleString()}</span>
-                  </div>
-                );
-              })}
-              {myRank && myRank > 50 && (
-                <div style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.12)",marginTop:6}}>
-                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:900,color:"rgba(255,255,255,.25)",width:20,textAlign:"center",flexShrink:0}}>#{myRank}</span>
-                  <span style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#fff",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name||user?.username}<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></span>
-                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(user?.tokens||0).toLocaleString()}</span>
+              <div style={{minWidth:210}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".62rem",fontWeight:700,color:"rgba(255,255,255,.3)",letterSpacing:".15em"}}>🏆 CLASIFICACIÓN</span>
+                  <button onClick={()=>setShowAllTop(v=>!v)} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontFamily:"'Orbitron',sans-serif",fontSize:".6rem",fontWeight:700}}>{showAllTop?"▲":"▼"}</button>
                 </div>
-              )}
+                {(showAllTop ? topPlayers.slice(0,50) : topPlayers.slice(0,3)).map((p,i) => {
+                  const isMe = p.id === userIdRef.current;
+                  const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+                  const posColor = i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"rgba(255,255,255,.2)";
+                  return (
+                    <div key={p.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:isMe?"rgba(251,191,36,.07)":i===0?"rgba(251,191,36,.04)":i===1?"rgba(148,163,184,.04)":i===2?"rgba(180,83,9,.04)":"transparent",marginBottom:2}}>
+                      <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:900,color:posColor,width:20,flexShrink:0,textAlign:"center"}}>{medal}</span>
+                      <span style={{flex:1,fontSize:".8rem",fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120}}>{p.username}{isMe&&<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}> TÚ</span>}</span>
+                      <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(p.tokens||0).toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+                {myRank && myRank > 50 && (
+                  <div style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.12)",marginTop:6}}>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:900,color:"rgba(255,255,255,.25)",width:20,textAlign:"center",flexShrink:0}}>#{myRank}</span>
+                    <span style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#fff",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name||user?.username}<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></span>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(user?.tokens||0).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1992,6 +2091,43 @@ function App() {
             <div className="lobby-title">ELIGE TU SALA</div>
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
           </div>
+
+          {/* Shield section */}
+          {(() => {
+            const cdLeft = shieldCooldownLeft();
+            const onCooldown = cdLeft !== "";
+            const shieldIcon = shieldLevel === 2 ? "🛡️" : shieldLevel === 1 ? "🔰" : "⚪";
+            const shieldIconStyle = shieldLevel === 2 ? {animation:"shield-pulse-full 2s ease-in-out infinite"} : shieldLevel === 1 ? {animation:"shield-pulse 2s ease-in-out infinite"} : {opacity:.35};
+            return (
+              <div className="shield-lobby">
+                <div className="shield-icon-big" style={shieldIconStyle}>{shieldIcon}</div>
+                <div className="shield-info-col">
+                  <div className="shield-name">ESCUDO DE PROTECCIÓN</div>
+                  {onCooldown
+                    ? <div className="shield-status cd">⏳ Disponible en {cdLeft}</div>
+                    : shieldLevel === 2
+                      ? <div className="shield-status full">✅ Protección total activa — no perderás tokens si pierdes</div>
+                      : shieldLevel === 1
+                        ? <div className="shield-status half">🔰 Protección media activa — si pierdes, solo la mitad</div>
+                        : <div className="shield-status none">Sin protección · Ve 1 o 2 anuncios antes de jugar</div>
+                  }
+                </div>
+                {shieldAdPlaying ? (
+                  <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(96,165,250,.1)",border:"1px solid rgba(96,165,250,.3)",borderRadius:10,padding:"9px 14px"}}>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1rem",fontWeight:900,color:"#60a5fa"}}>{shieldAdCountdown}s</span>
+                    <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)"}}>Anuncio...</span>
+                  </div>
+                ) : !onCooldown && shieldLevel < 2 ? (
+                  <button
+                    className={`shield-ad-btn${shieldLevel === 1 ? " full-prot" : ""}`}
+                    onClick={watchShieldAd}>
+                    📺 {shieldLevel === 0 ? "1 anuncio → ½ protección" : "1 anuncio más → protección total"}
+                  </button>
+                ) : null}
+                <button className="shield-how-btn" onClick={() => setShowShieldInfo(true)}>❓ Cómo funciona</button>
+              </div>
+            );
+          })()}
           <div className="rooms">
             {ROOMS.map(r => {
               const locked = (user?.tokens || 0) < r.cost;
@@ -2061,6 +2197,7 @@ function App() {
             </div>
             <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
           </div>
+
           <div className="game-card">
             {phase === "waiting" && (
               <div className="waiting">
@@ -2159,6 +2296,16 @@ function App() {
                 </div>
                 <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
                 {resultPhrase && <div className="result-phrase">"{resultPhrase}"</div>}
+                {result.shieldUsed === 2 && (
+                  <div style={{fontSize:".78rem",color:"#4ade80",textAlign:"center",marginTop:8,padding:"8px 16px",background:"rgba(74,222,128,.08)",borderRadius:10,border:"1px solid rgba(74,222,128,.2)"}}>
+                    🛡️ Protección total — no has perdido tokens
+                  </div>
+                )}
+                {result.shieldUsed === 1 && (
+                  <div style={{fontSize:".78rem",color:"#60a5fa",textAlign:"center",marginTop:8,padding:"8px 16px",background:"rgba(96,165,250,.08)",borderRadius:10,border:"1px solid rgba(96,165,250,.2)"}}>
+                    🔰 Protección media — solo perdiste la mitad
+                  </div>
+                )}
                 <button className="r-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>CAMBIAR SALA</button>
               </div>
             )}
@@ -2753,7 +2900,21 @@ function App() {
             <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"2rem",fontWeight:900,color:"#4ade80",margin:"16px 0"}}>
               +{bonusAmount} {COIN}
             </div>
-            <button className="btn-gold" onClick={() => setShowBonus(false)}>¡GENIAL!</button>
+            {bonusDoubleAvailable && !bonusDoubleAdPlaying && (
+              <button className="bonus-double-btn" onClick={watchBonusDoubleAd}>
+                📺 Ver anuncio y duplicar → <strong style={{color:"#4ade80",marginLeft:6}}>+{bonusAmount} {COIN} extra</strong>
+              </button>
+            )}
+            {bonusDoubleAdPlaying && (
+              <div style={{textAlign:"center",padding:"12px",background:"rgba(0,0,0,.3)",borderRadius:12,marginTop:12}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24"}}>{bonusDoubleAdCountdown}s</div>
+                <div style={{fontSize:".75rem",color:"rgba(255,255,255,.4)",marginTop:4}}>Anuncio en reproducción...</div>
+              </div>
+            )}
+            {!bonusDoubleAvailable && !bonusDoubleAdPlaying && (
+              <div style={{fontSize:".75rem",color:"#4ade80",textAlign:"center",marginTop:8}}>✅ ¡Bonus duplicado!</div>
+            )}
+            <button className="btn-gold" style={{marginTop:12}} onClick={() => setShowBonus(false)}>¡GENIAL!</button>
           </div>
         </div>
       )}
@@ -3068,6 +3229,58 @@ function App() {
             <button className="btn-gold" onClick={() => setShowTutorial(false)}>
               ¡ENTENDIDO, A JUGAR!
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SHIELD INFO MODAL ── */}
+      {showShieldInfo && (
+        <div className="tutorial-overlay" onClick={e => { if(e.target.classList.contains("tutorial-overlay")) setShowShieldInfo(false); }}>
+          <div className="tutorial-card" style={{maxWidth:480}}>
+            <div className="tutorial-title">🛡️ ESCUDO DE PROTECCIÓN</div>
+            <div className="tutorial-sub">Protege tus tokens antes de jugar</div>
+
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">1</div>
+              <div className="tutorial-step-txt">
+                <strong>Ve 1 anuncio → Protección media.</strong> Si pierdes la ronda, solo pierdes la mitad de los tokens apostados.
+              </div>
+            </div>
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">2</div>
+              <div className="tutorial-step-txt">
+                <strong>Ve 2 anuncios → Protección total.</strong> Si pierdes, no pierdes ningún token. ¡Juegas gratis esa ronda!
+              </div>
+            </div>
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">3</div>
+              <div className="tutorial-step-txt">
+                <strong>Si ganas con escudo,</strong> el escudo se consume pero puedes volver a activarlo viendo 1 o 2 anuncios antes de la siguiente ronda.
+              </div>
+            </div>
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">4</div>
+              <div className="tutorial-step-txt">
+                <strong>Si el escudo te protege de una derrota,</strong> queda inhabilitado 3 horas. Planifica bien cuándo usarlo.
+              </div>
+            </div>
+
+            <div style={{background:"rgba(96,165,250,.06)",border:"1px solid rgba(96,165,250,.15)",borderRadius:14,padding:"16px",marginBottom:20}}>
+              <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:"1.4rem",marginBottom:4}}>🔰</div>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:700,color:"#60a5fa"}}>1 ANUNCIO</div>
+                  <div style={{fontSize:".75rem",color:"rgba(255,255,255,.4)",marginTop:2}}>Pierde solo la mitad</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:"1.4rem",marginBottom:4}}>🛡️</div>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:700,color:"#4ade80"}}>2 ANUNCIOS</div>
+                  <div style={{fontSize:".75rem",color:"rgba(255,255,255,.4)",marginTop:2}}>No pierdes nada</div>
+                </div>
+              </div>
+            </div>
+
+            <button className="btn-gold" onClick={() => setShowShieldInfo(false)}>ENTENDIDO</button>
           </div>
         </div>
       )}
