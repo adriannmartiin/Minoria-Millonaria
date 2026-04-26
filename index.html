@@ -397,6 +397,23 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .redeem-ratio{font-size:.7rem;color:#4ade80;font-weight:700;letter-spacing:.08em}
 .redeem-lock{font-size:.68rem;color:rgba(255,255,255,.2);margin-top:10px;font-weight:700;letter-spacing:.08em}
 .redeem-info{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px;font-size:.82rem;color:rgba(255,255,255,.35);line-height:1.9}
+/* SEASON COUNTDOWN */
+.season-bar{background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.03));border:1px solid rgba(251,191,36,.2);border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px;max-width:1100px;margin-left:auto;margin-right:auto}
+.season-label{font-family:'Orbitron',sans-serif;font-size:.68rem;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.2em}
+.season-title{font-size:.88rem;font-weight:700;color:#fbbf24;margin-top:2px}
+.season-timer{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;color:#fbbf24;letter-spacing:.08em;text-shadow:0 0 20px rgba(251,191,36,.4)}
+/* TOP PLAYERS */
+.top-panel{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px;margin-bottom:28px;max-width:1100px;margin-left:auto;margin-right:auto}
+.top-panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.top-panel-title{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.2em}
+.top-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;transition:background .2s}
+.top-row:hover{background:rgba(255,255,255,.03)}
+.top-row.me{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15)}
+.top-pos{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:900;width:28px;text-align:center;flex-shrink:0}
+.top-name{flex:1;font-size:.88rem;font-weight:700;color:#fff}
+.top-tokens{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;color:#4ade80}
+.top-expand-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 16px;color:rgba(255,255,255,.35);font-family:'Orbitron',sans-serif;font-size:.62rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;letter-spacing:.1em;transition:all .2s}
+.top-expand-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.6)}
 /* TOURNAMENT BANNER */
 .tourn-banner{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(251,191,36,.05));border:1px solid rgba(251,191,36,.25);border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px;max-width:1100px;margin-left:auto;margin-right:auto;cursor:pointer;transition:all .2s}
 .tourn-banner:hover{border-color:rgba(251,191,36,.5)}
@@ -713,6 +730,7 @@ function App() {
   const [refCode, setRefCode] = useState("");
   const [refCopied, setRefCopied] = useState(false);
   const [regRefCode, setRegRefCode] = useState("");
+  const [legalChecked, setLegalChecked] = useState({ age: false, terms: false });
   // Badges
   const [allBadges, setAllBadges] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
@@ -729,6 +747,13 @@ function App() {
   const [histExpanded, setHistExpanded] = useState(false);
   // Lobby tournament banner
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
+
+  // Season
+  const SEASON_END = new Date("2025-05-15T23:59:59");
+  const [seasonCountdown, setSeasonCountdown] = useState("");
+  const [topPlayers, setTopPlayers] = useState([]);
+  const [myRank, setMyRank] = useState(null);
+  const [showAllTop, setShowAllTop] = useState(false);
 
   // Tutorial
   const [showTutorial, setShowTutorial] = useState(false);
@@ -795,6 +820,7 @@ function App() {
       loadRoomStats();
       checkAnnouncements();
       checkTournamentBanner();
+      loadTopPlayers();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
       // Phrases rotation
       phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % WIN_PHRASES.length), 5000);
@@ -820,6 +846,32 @@ function App() {
     }
     prevTokRef.current = curr;
   }, [user?.tokens]);
+
+  // Season countdown
+  useEffect(() => {
+    function tick() {
+      const diff = SEASON_END - Date.now();
+      if (diff <= 0) { setSeasonCountdown("¡Temporada finalizada!"); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setSeasonCountdown(`${d}d ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s`);
+    }
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function loadTopPlayers() {
+    try {
+      const data = await dbGet("profiles", "select=id,username,tokens&order=tokens.desc&limit=50", KEY);
+      if (!Array.isArray(data)) return;
+      setTopPlayers(data);
+      const idx = data.findIndex(p => p.id === userIdRef.current);
+      setMyRank(idx >= 0 ? idx + 1 : null);
+    } catch(e) {}
+  }
 
   async function checkTournamentBanner() {
     try {
@@ -1063,6 +1115,8 @@ function App() {
     if (!name.trim() || !email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
     if (!email.includes("@")) { setErr("Correo no válido"); return; }
     if (pw.length < 6) { setErr("Mínimo 6 caracteres"); return; }
+    if (!legalChecked.age) { setErr("Debes confirmar que eres mayor de 18 años"); return; }
+    if (!legalChecked.terms) { setErr("Debes aceptar los Términos y la Política de Privacidad"); return; }
     setBusy(true);
     try {
       const data = await authCall("signup", { email, password: pw });
@@ -1744,6 +1798,18 @@ function App() {
                     onChange={e => setRegRefCode(e.target.value)} />
                 </div>
               )}
+              {mode === "register" && (
+                <div style={{display:"flex",flexDirection:"column",gap:10,margin:"4px 0 8px"}}>
+                  <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",fontSize:".82rem",color:"rgba(255,255,255,.5)",lineHeight:1.5}}>
+                    <input type="checkbox" checked={legalChecked.age} onChange={e => setLegalChecked(l => ({...l, age: e.target.checked}))} style={{marginTop:2,accentColor:"#fbbf24",flexShrink:0}} />
+                    Confirmo que soy mayor de 18 años
+                  </label>
+                  <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",fontSize:".82rem",color:"rgba(255,255,255,.5)",lineHeight:1.5}}>
+                    <input type="checkbox" checked={legalChecked.terms} onChange={e => setLegalChecked(l => ({...l, terms: e.target.checked}))} style={{marginTop:2,accentColor:"#fbbf24",flexShrink:0}} />
+                    He leído y acepto los <span style={{color:"#fbbf24",marginLeft:4,marginRight:4}} onClick={() => setScreen("terms")}>Términos</span> y la <span style={{color:"#fbbf24",marginLeft:4}} onClick={() => setScreen("privacy")}>Política de Privacidad</span>
+                  </label>
+                </div>
+              )}
               <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
                 {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 1000 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
               </button>
@@ -1788,9 +1854,6 @@ function App() {
               <div className="ham-drawer">
                 <div className="ham-title">MENÚ</div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadTournaments(); }}>🏆 <span>Torneos</span></div>
-                <div className="ham-btn" onClick={() => { setShowHam(false); loadMissions(); }}>🎯 <span>Misiones</span></div>
-                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("redeem"); }}>💰 <span>Canjear premios</span></div>
-                <div className="ham-btn" onClick={() => { setShowHam(false); loadRanking(); }}>📊 <span>Ranking</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
                 <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
               </div>
@@ -1825,6 +1888,52 @@ function App() {
               </div>
             );
           })()}
+          {/* Season countdown bar */}
+          <div className="season-bar">
+            <div>
+              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 15 DE MAYO</div>
+              <div className="season-title">Los jugadores con más tokens al final de temporada recibirán premios reales</div>
+            </div>
+            <div className="season-timer">{seasonCountdown}</div>
+          </div>
+
+          {/* Top players panel */}
+          <div className="top-panel">
+            <div className="top-panel-hdr">
+              <div>
+                <div className="top-panel-title">🏆 CLASIFICACIÓN DE TEMPORADA</div>
+                <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:3}}>Top {showAllTop ? 50 : 5} jugadores con más tokens</div>
+              </div>
+              <button onClick={loadTopPlayers} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontSize:".75rem"}}>🔄</button>
+            </div>
+
+            {topPlayers.slice(0, showAllTop ? 50 : 5).map((p, i) => {
+              const isMe = p.id === userIdRef.current;
+              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`;
+              const posColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "rgba(255,255,255,.25)";
+              return (
+                <div key={p.id} className={`top-row${isMe?" me":""}`}>
+                  <div className="top-pos" style={{color:posColor}}>{medal}</div>
+                  <div className="top-name">{p.username}{isMe && <span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span>}</div>
+                  <div className="top-tokens">{(p.tokens||0).toLocaleString()} 🪙</div>
+                </div>
+              );
+            })}
+
+            <button className="top-expand-btn" onClick={() => setShowAllTop(v => !v)}>
+              {showAllTop ? "▲ VER MENOS" : `▼ VER TOP 50 COMPLETO`}
+            </button>
+
+            {/* My rank if outside top 50 */}
+            {myRank && myRank > 50 && (
+              <div style={{marginTop:10,padding:"10px 12px",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.15)",borderRadius:10,display:"flex",alignItems:"center",gap:12}}>
+                <div className="top-pos" style={{color:"rgba(255,255,255,.3)"}}>#{myRank}</div>
+                <div className="top-name">{user?.name || user?.username}<span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></div>
+                <div className="top-tokens">{(user?.tokens||0).toLocaleString()} 🪙</div>
+              </div>
+            )}
+          </div>
+
           <div className="lobby-hero">
             <div className="lobby-title">ELIGE TU SALA</div>
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
@@ -1866,9 +1975,14 @@ function App() {
             <div key={phraseIdx} className="phrase-txt">"{LOBBY_PHRASES[phraseIdx % LOBBY_PHRASES.length]}"</div>
           </div>
 
-          <div className="footer-links" style={{marginTop:24}}>
-            <span className="footer-link" onClick={() => setScreen("terms")}>Términos y Condiciones</span>
-            <span className="footer-link" onClick={() => setScreen("privacy")}>Política de Privacidad</span>
+          <div className="footer-links" style={{marginTop:24,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+            <div style={{display:"flex",gap:24}}>
+              <span className="footer-link" onClick={() => setScreen("terms")}>Términos y Condiciones</span>
+              <span className="footer-link" onClick={() => setScreen("privacy")}>Política de Privacidad</span>
+            </div>
+            <a href="https://www.juegoseguro.es" target="_blank" rel="noopener noreferrer" style={{fontSize:".72rem",color:"rgba(255,255,255,.15)",textDecoration:"none",transition:"color .2s"}} onMouseOver={e=>e.target.style.color="rgba(255,255,255,.35)"} onMouseOut={e=>e.target.style.color="rgba(255,255,255,.15)"}>
+              🛡️ Juego responsable — juegoseguro.es
+            </a>
           </div>
 
           {/* Unlock toast */}
@@ -2809,25 +2923,24 @@ function App() {
             <div className="tutorial-divider" />
 
             <div className="tutorial-prizes">
-              <div className="tutorial-prizes-title">💰 SISTEMA DE PREMIOS REALES</div>
-              <div className="tutorial-prize-row">
-                <span className="tutorial-prize-name">Premio mínimo</span>
-                <span><span className="tutorial-prize-val">5€</span><span className="tutorial-prize-ratio"> · 100.000 tokens</span></span>
+              <div className="tutorial-prizes-title">🏆 SISTEMA DE TEMPORADAS</div>
+              <div style={{fontSize:".82rem",color:"rgba(255,255,255,.45)",lineHeight:1.7,marginBottom:12}}>
+                Cada temporada dura unas semanas. Al final, los jugadores con <strong style={{color:"#fff"}}>más tokens acumulados</strong> reciben premios reales en forma de tarjetas regalo.
               </div>
               <div className="tutorial-prize-row">
-                <span className="tutorial-prize-name">Premio medio</span>
-                <span><span className="tutorial-prize-val">10€</span><span className="tutorial-prize-ratio"> · 180.000 tokens</span></span>
+                <span className="tutorial-prize-name">🥇 1er puesto</span>
+                <span className="tutorial-prize-val">Premio especial</span>
               </div>
               <div className="tutorial-prize-row">
-                <span className="tutorial-prize-name">Premio grande</span>
-                <span><span className="tutorial-prize-val">20€</span><span className="tutorial-prize-ratio"> · 320.000 tokens</span></span>
+                <span className="tutorial-prize-name">🥈 2º puesto</span>
+                <span className="tutorial-prize-val">Premio especial</span>
               </div>
               <div className="tutorial-prize-row" style={{marginBottom:0}}>
-                <span className="tutorial-prize-name">Premio máximo</span>
-                <span><span className="tutorial-prize-val">50€</span><span className="tutorial-prize-ratio"> · 700.000 tokens</span></span>
+                <span className="tutorial-prize-name">🥉 Top 10</span>
+                <span className="tutorial-prize-val">Premios a confirmar</span>
               </div>
               <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:12,fontStyle:"italic"}}>
-                Cuanto más canjeas de golpe, mejor ratio obtienes. El canje estará disponible muy pronto.
+                Al final de cada temporada los tokens se reinician a 1.000 para todos. ¡Juega gratis y gana real!
               </div>
             </div>
 
