@@ -730,7 +730,6 @@ function App() {
   const [refCode, setRefCode] = useState("");
   const [refCopied, setRefCopied] = useState(false);
   const [regRefCode, setRegRefCode] = useState("");
-  const [prevScreen, setPrevScreen] = useState("auth");
   const [legalChecked, setLegalChecked] = useState({ age: false, terms: false });
   // Badges
   const [allBadges, setAllBadges] = useState([]);
@@ -1807,7 +1806,7 @@ function App() {
                   </label>
                   <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",fontSize:".82rem",color:"rgba(255,255,255,.5)",lineHeight:1.5}}>
                     <input type="checkbox" checked={legalChecked.terms} onChange={e => setLegalChecked(l => ({...l, terms: e.target.checked}))} style={{marginTop:2,accentColor:"#fbbf24",flexShrink:0}} />
-                    He leído y acepto los <span style={{color:"#fbbf24",marginLeft:4,marginRight:4,cursor:"pointer"}} onClick={() => { setPrevScreen("auth"); setScreen("terms"); }}>Términos</span> y la <span style={{color:"#fbbf24",marginLeft:4,cursor:"pointer"}} onClick={() => { setPrevScreen("auth"); setScreen("privacy"); }}>Política de Privacidad</span>
+                    He leído y acepto los <span style={{color:"#fbbf24",marginLeft:4,marginRight:4}} onClick={() => setScreen("terms")}>Términos</span> y la <span style={{color:"#fbbf24",marginLeft:4}} onClick={() => setScreen("privacy")}>Política de Privacidad</span>
                   </label>
                 </div>
               )}
@@ -1978,8 +1977,8 @@ function App() {
 
           <div className="footer-links" style={{marginTop:24,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
             <div style={{display:"flex",gap:24}}>
-              <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("terms"); }}>Términos y Condiciones</span>
-              <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("privacy"); }}>Política de Privacidad</span>
+              <span className="footer-link" onClick={() => setScreen("terms")}>Términos y Condiciones</span>
+              <span className="footer-link" onClick={() => setScreen("privacy")}>Política de Privacidad</span>
             </div>
             <a href="https://www.juegoseguro.es" target="_blank" rel="noopener noreferrer" style={{fontSize:".72rem",color:"rgba(255,255,255,.15)",textDecoration:"none",transition:"color .2s"}} onMouseOver={e=>e.target.style.color="rgba(255,255,255,.35)"} onMouseOut={e=>e.target.style.color="rgba(255,255,255,.15)"}>
               🛡️ Juego responsable — juegoseguro.es
@@ -2328,7 +2327,9 @@ function App() {
         <div className="terms">
           <div className="topbar">
             <div className="topbar-logo">TÉRMINOS Y CONDICIONES</div>
-            <button className="ghost-btn" onClick={() => setScreen(prevScreen || "lobby")}>← Volver</button>
+            <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Volver</button>
+          </div>
+          <h2>1. Aceptación de los términos</h2>
           <p>Al acceder y usar Minoría Millonaria aceptas estos términos. Si no estás de acuerdo, no uses el servicio.</p>
           <h2>2. Descripción del servicio</h2>
           <p>Minoría Millonaria es un juego de entretenimiento basado en votaciones en tiempo real. Los tokens son una moneda virtual del juego sin valor monetario directo hasta que se canjeen según las condiciones vigentes.</p>
@@ -2353,7 +2354,9 @@ function App() {
         <div className="terms">
           <div className="topbar">
             <div className="topbar-logo">POLÍTICA DE PRIVACIDAD</div>
-            <button className="ghost-btn" onClick={() => setScreen(prevScreen || "lobby")}>← Volver</button>
+            <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Volver</button>
+          </div>
+          <h2>1. Datos que recopilamos</h2>
           <p>Recopilamos: dirección de correo electrónico, nombre de usuario, historial de partidas y saldo de tokens. No recopilamos datos de pago directamente — estos son gestionados por proveedores externos certificados.</p>
           <h2>2. Uso de los datos</h2>
           <p>Usamos tus datos para gestionar tu cuenta, mostrar tu historial y estadísticas, y mejorar la experiencia del juego. No vendemos tus datos a terceros.</p>
