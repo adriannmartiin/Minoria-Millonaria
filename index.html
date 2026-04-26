@@ -1587,6 +1587,7 @@ function App() {
   const cycleDoubleTimer = useRef(null);
   // Shield (0=none, 1=half, 2=full)
   const [shieldLevel, setShieldLevel] = useState(0);
+  const shieldLevelRef = useRef(0); // sync ref to avoid stale closure
   const [shieldCooldown, setShieldCooldown] = useState(0);
   const [shieldAdsWatched, setShieldAdsWatched] = useState(0); // ads watched in current session
   const [shieldAdPlaying, setShieldAdPlaying] = useState(false);
@@ -1723,7 +1724,9 @@ function App() {
         setShieldAdPlaying(false);
         const watched = shieldAdsWatched + 1;
         setShieldAdsWatched(watched);
-        setShieldLevel(Math.min(watched, 2)); // 1 ad = level 1, 2 ads = level 2
+        const newLevel = Math.min(watched, 2);
+        setShieldLevel(newLevel);
+        shieldLevelRef.current = newLevel;
         dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
       }
     }, 1000);
@@ -1738,12 +1741,12 @@ function App() {
   }
 
   function resetShieldAfterRound(won) {
-    if (shieldLevel > 0) {
+    if (shieldLevelRef.current > 0) {
       if (!won) {
-        // Shield used on loss → 3h cooldown
         setShieldCooldown(Date.now() + 3 * 3600000);
       }
-      // Either way shield is consumed after a round
+      // Consume shield immediately via ref so next round sees 0
+      shieldLevelRef.current = 0;
       setShieldLevel(0);
       setShieldAdsWatched(0);
     }
@@ -1918,9 +1921,9 @@ function App() {
           win = true; resultStr = "win";
           delta = Math.floor(prizePool / minC) - r.cost;
         } else {
-          if (shieldLevel === 2) {
+          if (shieldLevelRef.current === 2) {
             delta = 0; resultStr = "lose"; // full protection
-          } else if (shieldLevel === 1) {
+          } else if (shieldLevelRef.current === 1) {
             delta = -Math.floor(r.cost / 2); resultStr = "lose"; // half protection
           } else {
             delta = -r.cost; resultStr = "lose";
@@ -1957,7 +1960,7 @@ function App() {
     setUser(u => ({ ...u, tokens: newTok }));
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, profileUpdate, tokenRef.current);
 
-    setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak, shieldUsed: !win && shieldLevel > 0 ? shieldLevel : 0 });
+    setResult({ win, tie, delta, cA, cB, minority, myVote, noVote: myVote === null, q: { a: row.question_a, b: row.question_b }, streak: newStreak, shieldUsed: !win && shieldLevelRef.current > 0 ? shieldLevelRef.current : 0 });
     if (!tie && myVote !== null) {
       const pool = win ? WIN_PHRASES : LOSE_PHRASES;
       setResultPhrase(pool[Math.floor(Math.random() * pool.length)]);
