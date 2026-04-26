@@ -731,6 +731,7 @@ function App() {
   const [refCopied, setRefCopied] = useState(false);
   const [regRefCode, setRegRefCode] = useState("");
   const [legalChecked, setLegalChecked] = useState({ age: false, terms: false });
+  const [prevScreen, setPrevScreen] = useState("auth");
   // Badges
   const [allBadges, setAllBadges] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
@@ -749,7 +750,7 @@ function App() {
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
 
   // Season
-  const SEASON_END = new Date("2025-05-15T23:59:59");
+  const SEASON_END = new Date("2026-05-26T23:59:59");
   const [seasonCountdown, setSeasonCountdown] = useState("");
   const [topPlayers, setTopPlayers] = useState([]);
   const [myRank, setMyRank] = useState(null);
@@ -1806,7 +1807,7 @@ function App() {
                   </label>
                   <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",fontSize:".82rem",color:"rgba(255,255,255,.5)",lineHeight:1.5}}>
                     <input type="checkbox" checked={legalChecked.terms} onChange={e => setLegalChecked(l => ({...l, terms: e.target.checked}))} style={{marginTop:2,accentColor:"#fbbf24",flexShrink:0}} />
-                    He leído y acepto los <span style={{color:"#fbbf24",marginLeft:4,marginRight:4}} onClick={() => setScreen("terms")}>Términos</span> y la <span style={{color:"#fbbf24",marginLeft:4}} onClick={() => setScreen("privacy")}>Política de Privacidad</span>
+                    He leído y acepto los <span style={{color:"#fbbf24",marginLeft:4,marginRight:4,cursor:"pointer"}} onClick={() => { setPrevScreen("auth"); setScreen("terms"); }}>Términos</span> y la <span style={{color:"#fbbf24",marginLeft:4,cursor:"pointer"}} onClick={() => { setPrevScreen("auth"); setScreen("privacy"); }}>Política de Privacidad</span>
                   </label>
                 </div>
               )}
@@ -1854,6 +1855,7 @@ function App() {
               <div className="ham-drawer">
                 <div className="ham-title">MENÚ</div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadTournaments(); }}>🏆 <span>Torneos</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("ads"); }}>📺 <span>Ver anuncios — ganar tokens</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
                 <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
               </div>
@@ -1891,47 +1893,41 @@ function App() {
           {/* Season countdown bar */}
           <div className="season-bar">
             <div>
-              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 15 DE MAYO</div>
+              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 26 DE MAYO</div>
               <div className="season-title">Los jugadores con más tokens al final de temporada recibirán premios reales</div>
             </div>
             <div className="season-timer">{seasonCountdown}</div>
           </div>
 
-          {/* Top players panel */}
-          <div className="top-panel">
-            <div className="top-panel-hdr">
-              <div>
-                <div className="top-panel-title">🏆 CLASIFICACIÓN DE TEMPORADA</div>
-                <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:3}}>Top {showAllTop ? 50 : 5} jugadores con más tokens</div>
+          {/* Top players compact widget */}
+          <div style={{maxWidth:1100,margin:"0 auto 20px",display:"flex",justifyContent:"flex-start"}}>
+            <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"12px 16px",minWidth:240,maxWidth:320,position:"relative"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:showAllTop?12:8}}>
+                <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.3)",letterSpacing:".18em"}}>🏆 CLASIFICACIÓN</span>
+                <button onClick={() => { setShowAllTop(v=>!v); if(!showAllTop) loadTopPlayers(); }} style={{background:"none",border:"none",color:"rgba(255,255,255,.25)",cursor:"pointer",fontSize:".68rem",fontFamily:"'Orbitron',sans-serif",fontWeight:700,letterSpacing:".08em"}}>
+                  {showAllTop ? "▲" : "▼ VER MÁS"}
+                </button>
               </div>
-              <button onClick={loadTopPlayers} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontSize:".75rem"}}>🔄</button>
-            </div>
-
-            {topPlayers.slice(0, showAllTop ? 50 : 5).map((p, i) => {
-              const isMe = p.id === userIdRef.current;
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`;
-              const posColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "rgba(255,255,255,.25)";
-              return (
-                <div key={p.id} className={`top-row${isMe?" me":""}`}>
-                  <div className="top-pos" style={{color:posColor}}>{medal}</div>
-                  <div className="top-name">{p.username}{isMe && <span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span>}</div>
-                  <div className="top-tokens">{(p.tokens||0).toLocaleString()} 🪙</div>
+              {(showAllTop ? topPlayers.slice(0,50) : topPlayers.slice(0,3)).map((p,i) => {
+                const isMe = p.id === userIdRef.current;
+                const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+                const posColor = i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"rgba(255,255,255,.25)";
+                return (
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 4px",borderRadius:7,background:isMe?"rgba(251,191,36,.08)":"transparent",border:isMe?"1px solid rgba(251,191,36,.15)":"1px solid transparent",marginBottom:2}}>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".75rem",fontWeight:900,color:posColor,width:22,textAlign:"center",flexShrink:0}}>{medal}</span>
+                    <span style={{flex:1,fontSize:".8rem",fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.username}{isMe&&<span style={{fontSize:".6rem",color:"#fbbf24",marginLeft:4,fontFamily:"'Orbitron',sans-serif"}}> TÚ</span>}</span>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(p.tokens||0).toLocaleString()}</span>
+                  </div>
+                );
+              })}
+              {myRank && myRank > 50 && (
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"5px 4px",borderRadius:7,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.12)",marginTop:6}}>
+                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:900,color:"rgba(255,255,255,.3)",width:22,textAlign:"center"}}>#{myRank}</span>
+                  <span style={{flex:1,fontSize:".8rem",fontWeight:700,color:"#fff"}}>{user?.name||user?.username}<span style={{fontSize:".6rem",color:"#fbbf24",marginLeft:4,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></span>
+                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:700,color:"#4ade80"}}>{(user?.tokens||0).toLocaleString()}</span>
                 </div>
-              );
-            })}
-
-            <button className="top-expand-btn" onClick={() => setShowAllTop(v => !v)}>
-              {showAllTop ? "▲ VER MENOS" : `▼ VER TOP 50 COMPLETO`}
-            </button>
-
-            {/* My rank if outside top 50 */}
-            {myRank && myRank > 50 && (
-              <div style={{marginTop:10,padding:"10px 12px",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.15)",borderRadius:10,display:"flex",alignItems:"center",gap:12}}>
-                <div className="top-pos" style={{color:"rgba(255,255,255,.3)"}}>#{myRank}</div>
-                <div className="top-name">{user?.name || user?.username}<span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></div>
-                <div className="top-tokens">{(user?.tokens||0).toLocaleString()} 🪙</div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="lobby-hero">
@@ -1977,8 +1973,8 @@ function App() {
 
           <div className="footer-links" style={{marginTop:24,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
             <div style={{display:"flex",gap:24}}>
-              <span className="footer-link" onClick={() => setScreen("terms")}>Términos y Condiciones</span>
-              <span className="footer-link" onClick={() => setScreen("privacy")}>Política de Privacidad</span>
+              <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("terms"); }}>Términos y Condiciones</span>
+              <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("privacy"); }}>Política de Privacidad</span>
             </div>
             <a href="https://www.juegoseguro.es" target="_blank" rel="noopener noreferrer" style={{fontSize:".72rem",color:"rgba(255,255,255,.15)",textDecoration:"none",transition:"color .2s"}} onMouseOver={e=>e.target.style.color="rgba(255,255,255,.35)"} onMouseOut={e=>e.target.style.color="rgba(255,255,255,.15)"}>
               🛡️ Juego responsable — juegoseguro.es
@@ -2327,16 +2323,16 @@ function App() {
         <div className="terms">
           <div className="topbar">
             <div className="topbar-logo">TÉRMINOS Y CONDICIONES</div>
-            <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Volver</button>
+            <button className="ghost-btn" onClick={() => setScreen(prevScreen || "lobby")}>← Volver</button>
           </div>
           <h2>1. Aceptación de los términos</h2>
           <p>Al acceder y usar Minoría Millonaria aceptas estos términos. Si no estás de acuerdo, no uses el servicio.</p>
           <h2>2. Descripción del servicio</h2>
-          <p>Minoría Millonaria es un juego de entretenimiento basado en votaciones en tiempo real. Los tokens son una moneda virtual del juego sin valor monetario directo hasta que se canjeen según las condiciones vigentes.</p>
+          <p>Minoría Millonaria es un juego de entretenimiento basado en votaciones en tiempo real. Los tokens son una moneda virtual del juego sin valor monetario directo.</p>
           <h2>3. Edad mínima</h2>
           <p>Debes tener al menos 18 años para usar este servicio. Al registrarte confirmas que cumples este requisito.</p>
           <h2>4. Tokens y recompensas</h2>
-          <p>Los tokens se obtienen jugando, viendo anuncios o mediante compra. La casa retiene un 10% de comisión en cada ronda. Las recompensas están sujetas a disponibilidad y pueden modificarse. En caso de empate se devuelve la apuesta íntegra.</p>
+          <p>Los tokens son moneda virtual interna del juego. Al final de cada temporada, los jugadores mejor clasificados pueden recibir premios. Las recompensas están sujetas a disponibilidad y pueden modificarse. En caso de empate se devuelve la apuesta íntegra.</p>
           <h2>5. Conducta del usuario</h2>
           <p>Queda prohibido usar herramientas automáticas, bots o cualquier método que altere el funcionamiento normal del juego. El incumplimiento puede suponer la suspensión de la cuenta.</p>
           <h2>6. Limitación de responsabilidad</h2>
@@ -2354,9 +2350,7 @@ function App() {
         <div className="terms">
           <div className="topbar">
             <div className="topbar-logo">POLÍTICA DE PRIVACIDAD</div>
-            <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Volver</button>
-          </div>
-          <h2>1. Datos que recopilamos</h2>
+            <button className="ghost-btn" onClick={() => setScreen(prevScreen || "lobby")}>← Volver</button>
           <p>Recopilamos: dirección de correo electrónico, nombre de usuario, historial de partidas y saldo de tokens. No recopilamos datos de pago directamente — estos son gestionados por proveedores externos certificados.</p>
           <h2>2. Uso de los datos</h2>
           <p>Usamos tus datos para gestionar tu cuenta, mostrar tu historial y estadísticas, y mejorar la experiencia del juego. No vendemos tus datos a terceros.</p>
@@ -2580,6 +2574,26 @@ function App() {
                 <div className="redeem-lock">🔒 PRÓXIMAMENTE</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── ADS ── */}
+      {screen === "ads" && (
+        <div style={{minHeight:"100vh",padding:"28px 24px",maxWidth:600,margin:"0 auto"}}>
+          <div className="topbar">
+            <div className="topbar-logo">📺 VER ANUNCIOS</div>
+            <div className="topbar-right">
+              <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
+              <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
+            </div>
+          </div>
+          <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:18,padding:"40px 28px",textAlign:"center",marginTop:16}}>
+            <div style={{fontSize:"3rem",marginBottom:16}}>🚧</div>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".9rem",fontWeight:900,color:"#fbbf24",letterSpacing:".06em",marginBottom:12}}>PRÓXIMAMENTE</div>
+            <div style={{fontSize:".88rem",color:"rgba(255,255,255,.4)",lineHeight:1.7,maxWidth:400,margin:"0 auto"}}>
+              Pronto podrás ver anuncios cortos para ganar tokens extra sin jugar. Vuelve más tarde — esto estará disponible muy pronto.
+            </div>
           </div>
         </div>
       )}
