@@ -183,6 +183,22 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 /* ROOM LOCK */
 .room-locked-msg{font-size:.72rem;color:rgba(255,255,255,.3);margin-top:8px;font-weight:600;letter-spacing:.04em}
 .room-locked-msg span{color:#fbbf24}
+/* TUTORIAL MODAL */
+.tutorial-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px;overflow-y:auto}
+.tutorial-card{background:#0d0d18;border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:36px;max-width:560px;width:100%;position:relative}
+.tutorial-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;color:#fbbf24;margin-bottom:6px;letter-spacing:.06em;text-align:center}
+.tutorial-sub{font-size:.82rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:28px;font-weight:500}
+.tutorial-step{display:flex;gap:14px;margin-bottom:20px;align-items:flex-start}
+.tutorial-step-num{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:900;color:#0a0a0f;flex-shrink:0;margin-top:2px}
+.tutorial-step-txt{font-size:.88rem;color:rgba(255,255,255,.6);line-height:1.65;font-weight:500}
+.tutorial-step-txt strong{color:#fff;font-weight:700}
+.tutorial-divider{height:1px;background:rgba(255,255,255,.06);margin:20px 0}
+.tutorial-prizes{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);border-radius:14px;padding:18px;margin-bottom:24px}
+.tutorial-prizes-title{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.2em;margin-bottom:14px}
+.tutorial-prize-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.tutorial-prize-name{font-size:.82rem;color:rgba(255,255,255,.5);font-weight:600}
+.tutorial-prize-val{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;color:#fbbf24}
+.tutorial-prize-ratio{font-size:.7rem;color:#4ade80;font-weight:600;margin-left:8px}
 /* UNLOCK TOAST */
 @keyframes unlock-in{0%{transform:translateY(40px) scale(.9);opacity:0}60%{transform:translateY(-6px) scale(1.04)}100%{transform:translateY(0) scale(1);opacity:1}}
 .unlock-toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(74,222,128,.18),rgba(74,222,128,.06));border:1px solid rgba(74,222,128,.4);border-radius:18px;padding:18px 28px;z-index:9996;text-align:center;animation:unlock-in .5s cubic-bezier(.17,.67,.35,1.3) forwards;box-shadow:0 8px 32px rgba(74,222,128,.2);pointer-events:none}
@@ -713,6 +729,9 @@ function App() {
   const [histExpanded, setHistExpanded] = useState(false);
   // Lobby tournament banner
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
+
+  // Tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Hamburger menu
   const [showHam, setShowHam] = useState(false);
@@ -1685,6 +1704,7 @@ function App() {
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
+              <button className="ghost-btn" onClick={() => setShowTutorial(true)}>❓ Cómo funciona</button>
               <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
               <button className="ghost-btn" onClick={doLogout}>Salir</button>
               <button className="hamburger" onClick={() => setShowHam(true)}>☰</button>
@@ -2619,6 +2639,73 @@ function App() {
           {adminTab === "stats" && (
             <AdminStats sbUrl={SB} sbKey={KEY} />
           )}
+        </div>
+      )}
+
+      {/* ── TUTORIAL ── */}
+      {showTutorial && (
+        <div className="tutorial-overlay" onClick={(e) => { if(e.target.classList.contains('tutorial-overlay')) setShowTutorial(false); }}>
+          <div className="tutorial-card">
+            <div className="tutorial-title">👑 ¿CÓMO FUNCIONA?</div>
+            <div className="tutorial-sub">Todo lo que necesitas saber para ganar</div>
+
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">1</div>
+              <div className="tutorial-step-txt">
+                <strong>Elige tu sala y apuesta tokens.</strong> Hay 5 salas con distintas apuestas: desde 200 tokens en Starter hasta 10.000 en Elite. Cuanto más arriesgas, más puedes ganar.
+              </div>
+            </div>
+
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">2</div>
+              <div className="tutorial-step-txt">
+                <strong>Vota en 15 segundos.</strong> Se plantea una pregunta con dos opciones. Los primeros 10 segundos puedes ver en tiempo real cómo está votando el resto — y cambiar tu voto cuantas veces quieras.
+              </div>
+            </div>
+
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">3</div>
+              <div className="tutorial-step-txt">
+                <strong>Los últimos 5 segundos, la barra se oculta.</strong> Ya no sabes qué está pasando. Es el momento clave — ¿cambias de bando o confías en tu instinto? Solo cuenta tu último voto.
+              </div>
+            </div>
+
+            <div className="tutorial-step">
+              <div className="tutorial-step-num">4</div>
+              <div className="tutorial-step-txt">
+                <strong>La minoría se lleva todo.</strong> El grupo con menos votos gana y se reparte el bote entre sus integrantes. Cuanto más aplastante la mayoría, mayor es el premio para los que pensaron diferente. En caso de empate, todos recuperan su apuesta.
+              </div>
+            </div>
+
+            <div className="tutorial-divider" />
+
+            <div className="tutorial-prizes">
+              <div className="tutorial-prizes-title">💰 SISTEMA DE PREMIOS REALES</div>
+              <div className="tutorial-prize-row">
+                <span className="tutorial-prize-name">Premio mínimo</span>
+                <span><span className="tutorial-prize-val">5€</span><span className="tutorial-prize-ratio"> · 100.000 tokens</span></span>
+              </div>
+              <div className="tutorial-prize-row">
+                <span className="tutorial-prize-name">Premio medio</span>
+                <span><span className="tutorial-prize-val">10€</span><span className="tutorial-prize-ratio"> · 180.000 tokens</span></span>
+              </div>
+              <div className="tutorial-prize-row">
+                <span className="tutorial-prize-name">Premio grande</span>
+                <span><span className="tutorial-prize-val">20€</span><span className="tutorial-prize-ratio"> · 320.000 tokens</span></span>
+              </div>
+              <div className="tutorial-prize-row" style={{marginBottom:0}}>
+                <span className="tutorial-prize-name">Premio máximo</span>
+                <span><span className="tutorial-prize-val">50€</span><span className="tutorial-prize-ratio"> · 700.000 tokens</span></span>
+              </div>
+              <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:12,fontStyle:"italic"}}>
+                Cuanto más canjeas de golpe, mejor ratio obtienes. El canje estará disponible muy pronto.
+              </div>
+            </div>
+
+            <button className="btn-gold" onClick={() => setShowTutorial(false)}>
+              ¡ENTENDIDO, A JUGAR!
+            </button>
+          </div>
         </div>
       )}
 
