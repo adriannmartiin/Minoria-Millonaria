@@ -1276,6 +1276,15 @@ function App() {
           setCycleStart(p.ad_cycle_start);
           setCycleAdsWatched(p.ad_cycle_watched || 0);
         }
+        // Load shield state
+        if (p.shield_cooldown && p.shield_cooldown > Date.now()) {
+          setShieldCooldown(p.shield_cooldown);
+        }
+        if (p.shield_level > 0 && (!p.shield_cooldown || p.shield_cooldown <= Date.now())) {
+          setShieldLevel(p.shield_level);
+          shieldLevelRef.current = p.shield_level;
+          setShieldAdsWatched(p.shield_ads_watched || 0);
+        }
         checkDailyBonus(p, data.user.id, data.access_token);
         setScreen("lobby");
       } else {
