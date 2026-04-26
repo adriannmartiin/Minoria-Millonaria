@@ -921,6 +921,44 @@ function App() {
   }, [user?.tokens]);
 
   // Season countdown
+  // Load ad counters from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("mm_ad_state") || "{}");
+      // Rescue: reset count if new day
+      const today = new Date().toISOString().split("T")[0];
+      if (saved.rescueDate === today) {
+        setRescueCount(saved.rescueCount || 0);
+        setRescueCooldown(saved.rescueCooldown || 0);
+      }
+      // Cycle: restore only if still within 6h window
+      if (saved.cycleStart && Date.now() < saved.cycleStart + 6 * 3600000) {
+        setCycleStart(saved.cycleStart);
+        setCycleAdsWatched(saved.cycleAdsWatched || 0);
+        setCycleDoubleAvail(saved.cycleDoubleAvail || false);
+      } else if (saved.cycleStart && Date.now() >= saved.cycleStart + 6 * 3600000 && (saved.cycleAdsWatched || 0) >= 5) {
+        // Cycle expired and was completed — keep exhausted state so user sees new cycle button
+        setCycleStart(saved.cycleStart);
+        setCycleAdsWatched(saved.cycleAdsWatched || 0);
+        setCycleDoubleAvail(false);
+      }
+    } catch(e) {}
+  }, []);
+
+  // Save ad counters to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      localStorage.setItem("mm_ad_state", JSON.stringify({
+        rescueDate: today,
+        rescueCount,
+        rescueCooldown,
+        cycleStart,
+        cycleAdsWatched,
+        cycleDoubleAvail,
+      }));
+    } catch(e) {}
+  }, [rescueCount, rescueCooldown, cycleStart, cycleAdsWatched, cycleDoubleAvail]);
   useEffect(() => {
     function tick() {
       const diff = SEASON_END - Date.now();
@@ -1674,23 +1712,26 @@ function App() {
   }
   function watchCycleAd() {
     if (cycleAdPlaying) return;
-    if (cycleAdsWatched === 0 || cycleAvailable()) {
-      if (cycleAdsWatched >= 5) { setCycleAdsWatched(0); setCycleDoubleAvail(false); }
-      if (cycleAdsWatched === 0) setCycleStart(Date.now());
+    // If cycle was completed and 6h passed, reset it
+    if (cycleAdsWatched >= 5 && cycleStart && Date.now() >= cycleStart + 6 * 3600000) {
+      setCycleAdsWatched(0);
+      setCycleDoubleAvail(false);
+      setCycleStart(0);
     }
     setCycleAdPlaying(true); setCycleAdCountdown(5);
+    let currentIdx = cycleAdsWatched;
+    if (currentIdx >= 5) currentIdx = 0; // safety
     let t = 5;
     cycleAdTimer.current = setInterval(() => {
       t--; setCycleAdCountdown(t);
       if (t <= 0) {
         clearInterval(cycleAdTimer.current);
         setCycleAdPlaying(false);
-        const idx = cycleAdsWatched;
-        const reward = CYCLE_REWARDS[Math.min(idx, 4)];
+        const reward = CYCLE_REWARDS[Math.min(currentIdx, 4)];
         saveTok(tokRef.current + reward);
-        const next = idx + 1;
+        const next = currentIdx + 1;
         setCycleAdsWatched(next);
-        if (next === 1) setCycleStart(Date.now());
+        if (currentIdx === 0) setCycleStart(Date.now()); // start timer on first ad
         if (next >= 5) setCycleDoubleAvail(true);
         dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
       }
@@ -2079,7 +2120,7 @@ function App() {
                 </div>
               )}
               <button className="btn-gold" disabled={busy} onClick={mode === "register" ? doRegister : doLogin}>
-                {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 1000 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
+                {busy ? "CARGANDO..." : mode === "register" ? <span>REGISTRARSE · 2500 {COIN} GRATIS</span> : "ENTRAR AL JUEGO"}
               </button>
             </div>
             <div className="auth-switch">
@@ -3506,7 +3547,7 @@ function App() {
           <div className="modal-card">
             <div className="modal-icon">👑</div>
             <div className="modal-title">¡BIENVENIDO A MINORÍA MILLONARIA!</div>
-            <div className="modal-text">El juego donde la minoría siempre gana. Tienes <strong style={{color:"#fbbf24"}}>1.000 tokens</strong> para empezar.</div>
+            <div className="modal-text">El juego donde la minoría siempre gana. Tienes <strong style={{color:"#fbbf24"}}>2.500 tokens</strong> para empezar.</div>
             <div className="modal-rules">
               <div className="modal-rule"><span>⚡</span><span>Cada ronda dura 15 segundos. Elige una opción.</span></div>
               <div className="modal-rule"><span>📊</span><span>Los primeros 10s ves cómo vota la gente en tiempo real.</span></div>
