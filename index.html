@@ -1085,28 +1085,39 @@ function App() {
 
   // ── MISSIONS ─────────────────────────────────────────────────────────────
   async function loadMissions() {
+    setScreen("missions"); // go first, load data after
     const weekKey = getWeekKey();
     const weekStart = new Date();
     weekStart.setHours(0,0,0,0);
     weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
     const wISO = weekStart.toISOString();
-    const [hist, completions, refs] = await Promise.all([
-      dbGet("match_history", `user_id=eq.${userIdRef.current}&created_at=gt.${wISO}&select=result,room_id`, tokenRef.current),
-      dbGet("mission_completions", `user_id=eq.${userIdRef.current}&week_key=eq.${weekKey}`, tokenRef.current),
-      dbGet("referrals", `referrer_id=eq.${userIdRef.current}&created_at=gt.${wISO}`, tokenRef.current),
-    ]);
-    const h = Array.isArray(hist) ? hist : [];
-    setMissionStats({
-      wins: h.filter(x => x.result === "win").length,
-      games: h.length,
-      refs: Array.isArray(refs) ? refs.length : 0,
-      vip: h.filter(x => x.room_id === "vip").length,
-      elite: h.filter(x => x.room_id === "elite").length,
-      starter: h.filter(x => x.room_id === "starter" && x.result === "win").length,
-    });
-    setMissions(getWeekMissions());
-    setMissionCompletions(Array.isArray(completions) ? completions : []);
-    setScreen("missions");
+    try {
+      const [hist, completions, refs] = await Promise.all([
+        dbGet("match_history", `user_id=eq.${userIdRef.current}&created_at=gt.${wISO}&select=result,room_id`, tokenRef.current),
+        dbGet("mission_completions", `user_id=eq.${userIdRef.current}&week_key=eq.${weekKey}`, tokenRef.current),
+        dbGet("referrals", `referrer_id=eq.${userIdRef.current}&created_at=gt.${wISO}`, tokenRef.current),
+      ]);
+      const h = Array.isArray(hist) ? hist : [];
+      setMissionStats({
+        wins: h.filter(x => x.result === "win").length,
+        games: h.length,
+        refs: Array.isArray(refs) ? refs.length : 0,
+        vip: h.filter(x => x.room_id === "vip").length,
+        elite: h.filter(x => x.room_id === "elite").length,
+        starter: h.filter(x => x.room_id === "starter" && x.result === "win").length,
+        medium: h.filter(x => x.room_id === "medium").length,
+        prime: h.filter(x => x.room_id === "prime").length,
+        mediumW: h.filter(x => x.room_id === "medium" && x.result === "win").length,
+        primeW: h.filter(x => x.room_id === "prime" && x.result === "win").length,
+        vipW: h.filter(x => x.room_id === "vip" && x.result === "win").length,
+        eliteW: h.filter(x => x.room_id === "elite" && x.result === "win").length,
+        rooms: new Set(h.map(x => x.room_id)).size,
+      });
+      setMissions(getWeekMissions());
+      setMissionCompletions(Array.isArray(completions) ? completions : []);
+    } catch(e) {
+      setMissions(getWeekMissions());
+    }
   }
 
   function getMissionProgress(m, stats) {
@@ -1117,6 +1128,12 @@ function App() {
     if (m.cat === "vip")     return stats.vip || 0;
     if (m.cat === "elite")   return stats.elite || 0;
     if (m.cat === "starter") return stats.starter || 0;
+    if (m.cat === "medium")  return stats.medium || 0;
+    if (m.cat === "prime")   return stats.prime || 0;
+    if (m.cat === "rooms")   return stats.rooms || 0;
+    if (m.cat === "mp")      return (stats.mediumW || 0) + (stats.primeW || 0);
+    if (m.cat === "pv")      return (stats.primeW || 0) + (stats.vipW || 0);
+    if (m.cat === "all")     return stats.rooms || 0;
     return 0;
   }
 
@@ -1164,10 +1181,10 @@ function App() {
         // Email confirmation OFF — direct login
         tokenRef.current = data.access_token;
         userIdRef.current = data.user.id;
-        await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: regRefCode ? 3000 : 2500 }, data.access_token);
-        tokRef.current = regRefCode ? 3000 : 2500;
+        await dbInsertRaw("profiles", { id: data.user.id, username: name, tokens: regRefCode ? 3500 : 2500 }, data.access_token);
+        tokRef.current = regRefCode ? 3500 : 2500;
         setEmail(email);
-        setUser({ name, tokens: regRefCode ? 3000 : 2500 });
+        setUser({ name, tokens: regRefCode ? 3500 : 2500 });
         setShowWelcome(true);
         applyReferral(data.user.id);
         setScreen("lobby");
@@ -1176,7 +1193,7 @@ function App() {
         localStorage.setItem("mm_pending_profile", JSON.stringify({
           id: data.user.id,
           username: name,
-          tokens: regRefCode ? 3000 : 2500,
+          tokens: regRefCode ? 3500 : 2500,
           refCode: regRefCode || ""
         }));
         setMsg("✅ ¡Casi listo! Revisa tu correo y confirma tu cuenta para empezar a jugar.");
@@ -2658,37 +2675,31 @@ function App() {
             <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24",letterSpacing:".15em",marginBottom:16,textAlign:"center",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.15)",borderRadius:12,padding:"14px"}}>
               {refCode || "—"}
             </div>
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(255,255,255,.25)",letterSpacing:".15em",marginBottom:8}}>LINK DE INVITACIÓN</div>
-            <div style={{display:"flex",gap:10,alignItems:"center"}}>
-              <div style={{flex:1,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"11px 14px",fontSize:".78rem",color:"rgba(255,255,255,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                {refCode ? `${window.location.origin}?ref=${refCode}` : "Cargando..."}
-              </div>
-              <button className="btn-gold" style={{padding:"11px 18px",fontSize:".7rem",flexShrink:0,whiteSpace:"nowrap"}} onClick={() => {
-                if (!refCode) return;
-                const link = `${window.location.origin}?ref=${refCode}`;
-                navigator.clipboard?.writeText(link).then(() => {}).catch(() => {});
-                alert("¡Link copiado! Compártelo con tus amigos.");
-              }}>📋 COPIAR</button>
-            </div>
+            <button className="btn-gold" style={{width:"100%",padding:"14px",fontSize:".75rem"}} onClick={() => {
+              if (!refCode) return;
+              const link = `${window.location.origin}?ref=${refCode}`;
+              if (navigator.clipboard) navigator.clipboard.writeText(link).catch(()=>{});
+              alert("¡Link copiado!\n\n" + link);
+            }}>📋 COPIAR LINK DE INVITACIÓN</button>
           </div>
 
           {/* Rewards */}
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",color:"rgba(255,255,255,.25)",letterSpacing:".2em",marginBottom:12}}>RECOMPENSAS</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",color:"rgba(255,255,255,.25)",letterSpacing:".2em",marginBottom:12}}>RECOMPENSAS POR INVITAR</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
             <div style={{background:"rgba(74,222,128,.06)",border:"1px solid rgba(74,222,128,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
-              <div style={{fontSize:"1.8rem",marginBottom:6}}>👤</div>
+              <div style={{fontSize:"1.8rem",marginBottom:6}}>🎁</div>
               <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#4ade80",marginBottom:6}}>+1.000 🪙</div>
-              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes cada vez que alguien se registra con tu código</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes 1.000 tokens cada vez que alguien se registra con tu código</div>
             </div>
             <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
-              <div style={{fontSize:"1.8rem",marginBottom:6}}>🎁</div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#fbbf24",marginBottom:6}}>+500 🪙</div>
-              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tu amigo recibe 500 tokens extra al registrarse con tu código</div>
+              <div style={{fontSize:"1.8rem",marginBottom:6}}>🎉</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#fbbf24",marginBottom:6}}>+1.000 🪙</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tu amigo recibe 1.000 tokens extra al registrarse con tu código (empieza con 3.500 en total)</div>
             </div>
             <div style={{background:"rgba(192,132,252,.06)",border:"1px solid rgba(192,132,252,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
               <div style={{fontSize:"1.8rem",marginBottom:6}}>🔗</div>
               <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#c084fc",marginBottom:6}}>+200 🪙</div>
-              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes cuando alguien invitado por tu amigo se registra</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes 200 tokens cuando alguien invitado por un amigo tuyo también se registra</div>
             </div>
           </div>
         </div>
