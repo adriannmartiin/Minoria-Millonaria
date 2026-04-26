@@ -833,10 +833,11 @@ function App() {
   }, [screen]);
 
   // Detect room unlock when tokens change
+  const userTokens = user ? (user.tokens || 0) : 0;
   useEffect(() => {
     if (!user || screen !== "lobby") return;
     const prev = prevTokRef.current;
-    const curr = user.tokens || 0;
+    const curr = userTokens;
     if (prev > 0 && curr > prev) {
       const justUnlocked = ROOMS.find(r => r.cost > prev && r.cost <= curr);
       if (justUnlocked) {
@@ -846,7 +847,7 @@ function App() {
       }
     }
     prevTokRef.current = curr;
-  }, [user?.tokens]);
+  }, [userTokens]);
 
   // Season countdown
   useEffect(() => {
