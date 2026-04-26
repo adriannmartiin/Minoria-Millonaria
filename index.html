@@ -922,12 +922,17 @@ function App() {
 
   // Season countdown
   async function saveAdState(updates) {
-    if (!userIdRef.current || !tokenRef.current) return;
+    const uid = userIdRef.current;
+    const tok = tokenRef.current || KEY;
+    if (!uid) return;
     const today = new Date().toISOString().split("T")[0];
-    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, {
-      rescue_date: today,
-      ...updates
-    }, tokenRef.current);
+    try {
+      await fetch(`${SB}/rest/v1/profiles?id=eq.${uid}`, {
+        method: "PATCH",
+        headers: { apikey: KEY, Authorization: `Bearer ${tok}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ rescue_date: today, ...updates })
+      });
+    } catch(e) { console.error("saveAdState error:", e); }
   }
   useEffect(() => {
     function tick() {
@@ -1681,12 +1686,14 @@ function App() {
         clearInterval(rescueAdTimer.current);
         setRescueAdPlaying(false);
         saveTok(4000);
-        const used = rescueCount + 1;
         const cd = Date.now() + 30 * 60000;
-        setRescueCount(used);
         setRescueCooldown(cd);
-        saveAdState({ rescue_count: used, rescue_cooldown: cd });
-        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+        setRescueCount(prev => {
+          const used = prev + 1;
+          saveAdState({ rescue_count: used, rescue_cooldown: cd });
+          return used;
+        });
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, KEY);
       }
     }, 1000);
   }
@@ -1725,13 +1732,15 @@ function App() {
         setCycleAdPlaying(false);
         const reward = CYCLE_REWARDS[Math.min(currentIdx, 4)];
         saveTok(tokRef.current + reward);
-        const next = currentIdx + 1;
-        setCycleAdsWatched(next);
-        const newCycleStart = currentIdx === 0 ? Date.now() : cycleStart;
-        if (currentIdx === 0) setCycleStart(newCycleStart);
-        if (next >= 5) setCycleDoubleAvail(true);
-        saveAdState({ ad_cycle_start: newCycleStart || cycleStart, ad_cycle_watched: next });
-        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+        const newStart = currentIdx === 0 ? Date.now() : cycleStart;
+        if (currentIdx === 0) setCycleStart(newStart);
+        setCycleAdsWatched(prev => {
+          const next = prev + 1;
+          if (next >= 5) setCycleDoubleAvail(true);
+          saveAdState({ ad_cycle_start: newStart || cycleStart, ad_cycle_watched: next });
+          return next;
+        });
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, KEY);
       }
     }, 1000);
   }
@@ -1761,12 +1770,15 @@ function App() {
       if (t <= 0) {
         clearInterval(shieldAdTimer.current);
         setShieldAdPlaying(false);
-        const watched = shieldAdsWatched + 1;
-        setShieldAdsWatched(watched);
-        const newLevel = Math.min(watched, 2);
-        setShieldLevel(newLevel);
-        shieldLevelRef.current = newLevel;
-        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+        setShieldAdsWatched(prev => {
+          const watched = prev + 1;
+          const newLevel = Math.min(watched, 2);
+          setShieldLevel(newLevel);
+          shieldLevelRef.current = newLevel;
+          saveAdState({ shield_level: newLevel, shield_ads_watched: watched, shield_cooldown: 0 });
+          return watched;
+        });
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, KEY);
       }
     }, 1000);
   }
@@ -1781,13 +1793,12 @@ function App() {
 
   function resetShieldAfterRound(won) {
     if (shieldLevelRef.current > 0) {
-      if (!won) {
-        setShieldCooldown(Date.now() + 3 * 3600000);
-      }
-      // Consume shield immediately via ref so next round sees 0
+      const cd = !won ? Date.now() + 3 * 3600000 : 0;
+      if (!won) setShieldCooldown(cd);
       shieldLevelRef.current = 0;
       setShieldLevel(0);
       setShieldAdsWatched(0);
+      saveAdState({ shield_level: 0, shield_ads_watched: 0, shield_cooldown: cd });
     }
   }
 
