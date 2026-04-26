@@ -1562,8 +1562,29 @@ function App() {
 
   // No-tokens screen
   const [noTokRoom, setNoTokRoom] = useState(null);
+  // ── AD SYSTEM STATE ──────────────────────────────────────────────────────
   const [adCountdown, setAdCountdown] = useState(0);
   const [adWatched, setAdWatched] = useState(false);
+  // Top-up ad (1-199 → 200)
+  const [topupAdPlaying, setTopupAdPlaying] = useState(false);
+  const [topupAdCount, setTopupAdCount] = useState(0);
+  const topupAdTimer = useRef(null);
+  // Rescue ad (0 → 4000)
+  const [rescueCount, setRescueCount] = useState(0); // used today
+  const [rescueCooldown, setRescueCooldown] = useState(0); // timestamp
+  const [rescueAdPlaying, setRescueAdPlaying] = useState(false);
+  const [rescueAdCountdown, setRescueAdCountdown] = useState(0);
+  const rescueAdTimer = useRef(null);
+  // 5-ad cycle (every 6h)
+  const [cycleStart, setCycleStart] = useState(0); // timestamp of cycle start
+  const [cycleAdsWatched, setCycleAdsWatched] = useState(0); // 0-5
+  const [cycleAdPlaying, setCycleAdPlaying] = useState(false);
+  const [cycleAdCountdown, setCycleAdCountdown] = useState(0);
+  const [cycleDoubleAvail, setCycleDoubleAvail] = useState(false);
+  const [cycleDoubleAdPlaying, setCycleDoubleAdPlaying] = useState(false);
+  const [cycleDoubleAdCountdown, setCycleDoubleAdCountdown] = useState(0);
+  const cycleAdTimer = useRef(null);
+  const cycleDoubleTimer = useRef(null);
   // Shield (0=none, 1=half, 2=full)
   const [shieldLevel, setShieldLevel] = useState(0);
   const [shieldCooldown, setShieldCooldown] = useState(0);
@@ -1579,28 +1600,115 @@ function App() {
   const bonusDoubleTimer = useRef(null);
   const adRef = useRef(null);
 
+  // ── LEGACY AD (no-tokens room screen) ────────────────────────────────────
   function watchAd() {
-    setAdCountdown(5);
-    setAdWatched(false);
+    setAdCountdown(5); setAdWatched(false);
     adRef.current = setInterval(() => {
       setAdCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(adRef.current);
-          setAdWatched(true);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(adRef.current); setAdWatched(true); return 0; }
         return prev - 1;
       });
     }, 1000);
   }
-
   async function claimAdTokens() {
-    const newTok = tokRef.current + 100;
-    await saveTok(newTok);
-    // Register ad view
+    await saveTok(tokRef.current + 100);
     await dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
-    setAdWatched(false);
-    setAdCountdown(0);
+    setAdWatched(false); setAdCountdown(0);
+  }
+
+  // ── TOP-UP AD (1-199 → 200) ────────────────────────────────────────────────
+  function watchTopupAd() {
+    setTopupAdPlaying(true); setTopupAdCount(5);
+    let t = 5;
+    topupAdTimer.current = setInterval(() => {
+      t--; setTopupAdCount(t);
+      if (t <= 0) {
+        clearInterval(topupAdTimer.current);
+        setTopupAdPlaying(false);
+        const needed = 200 - tokRef.current;
+        saveTok(tokRef.current + Math.max(needed, 0));
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
+  }
+
+  // ── RESCUE AD (0 → 4000) ──────────────────────────────────────────────────
+  function rescueCooldownLeft() {
+    const diff = rescueCooldown - Date.now();
+    if (diff <= 0) return "";
+    const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+  function watchRescueAd() {
+    if (rescueAdPlaying) return;
+    setRescueAdPlaying(true); setRescueAdCountdown(5);
+    let t = 5;
+    rescueAdTimer.current = setInterval(() => {
+      t--; setRescueAdCountdown(t);
+      if (t <= 0) {
+        clearInterval(rescueAdTimer.current);
+        setRescueAdPlaying(false);
+        saveTok(4000);
+        const used = rescueCount + 1;
+        setRescueCount(used);
+        setRescueCooldown(Date.now() + 30 * 60000);
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
+  }
+
+  // ── CYCLE ADS (5 ads per 6h) ───────────────────────────────────────────────
+  const CYCLE_REWARDS = [50, 50, 50, 50, 200];
+  function cycleTimeLeft() {
+    if (!cycleStart || cycleAdsWatched < 5) return "";
+    const end = cycleStart + 6 * 3600000;
+    const diff = end - Date.now();
+    if (diff <= 0) return "";
+    const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
+    return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+  function cycleAvailable() {
+    if (cycleAdsWatched < 5) return true;
+    return cycleStart && Date.now() >= cycleStart + 6 * 3600000;
+  }
+  function watchCycleAd() {
+    if (cycleAdPlaying) return;
+    if (cycleAdsWatched === 0 || cycleAvailable()) {
+      if (cycleAdsWatched >= 5) { setCycleAdsWatched(0); setCycleDoubleAvail(false); }
+      if (cycleAdsWatched === 0) setCycleStart(Date.now());
+    }
+    setCycleAdPlaying(true); setCycleAdCountdown(5);
+    let t = 5;
+    cycleAdTimer.current = setInterval(() => {
+      t--; setCycleAdCountdown(t);
+      if (t <= 0) {
+        clearInterval(cycleAdTimer.current);
+        setCycleAdPlaying(false);
+        const idx = cycleAdsWatched;
+        const reward = CYCLE_REWARDS[Math.min(idx, 4)];
+        saveTok(tokRef.current + reward);
+        const next = idx + 1;
+        setCycleAdsWatched(next);
+        if (next === 1) setCycleStart(Date.now());
+        if (next >= 5) setCycleDoubleAvail(true);
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
+  }
+  function watchCycleDoubleAd() {
+    if (cycleDoubleAdPlaying) return;
+    setCycleDoubleAdPlaying(true); setCycleDoubleAdCountdown(5);
+    let t = 5;
+    cycleDoubleTimer.current = setInterval(() => {
+      t--; setCycleDoubleAdCountdown(t);
+      if (t <= 0) {
+        clearInterval(cycleDoubleTimer.current);
+        setCycleDoubleAdPlaying(false);
+        setCycleDoubleAvail(false);
+        saveTok(tokRef.current + 200);
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
+      }
+    }, 1000);
   }
 
   // ── SHIELD ────────────────────────────────────────────────────────────────
@@ -2092,6 +2200,48 @@ function App() {
             <div className="lobby-hint">Hola {user?.name} · Sé parte de la minoría</div>
           </div>
 
+          {/* RESCUE BANNER — 0 tokens */}
+          {(user?.tokens || 0) === 0 && (
+            <div style={{maxWidth:1100,margin:"0 auto 20px",background:"rgba(239,68,68,.1)",border:"2px solid rgba(239,68,68,.4)",borderRadius:18,padding:"28px",textAlign:"center"}}>
+              <div style={{fontSize:"2.5rem",marginBottom:8}}>😱</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1rem",fontWeight:900,color:"#f87171",marginBottom:8,letterSpacing:".06em"}}>¡SIN TOKENS!</div>
+              <div style={{fontSize:".88rem",color:"rgba(255,255,255,.5)",marginBottom:20,lineHeight:1.6}}>No te rindas — tienes más oportunidades.<br/>Ve un anuncio y consigue <strong style={{color:"#4ade80"}}>4.000 tokens</strong> para volver a jugar.</div>
+              {rescueCooldown > Date.now() ? (
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",color:"rgba(255,255,255,.3)"}}>
+                  Próximo rescate en <strong style={{color:"#fbbf24"}}>{rescueCooldownLeft()}</strong>
+                  <div style={{fontSize:".7rem",marginTop:4}}>Rescates restantes hoy: {Math.max(0, 3 - rescueCount)}/3</div>
+                </div>
+              ) : rescueCount >= 3 ? (
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",color:"rgba(255,255,255,.25)"}}>Has usado todos los rescates de hoy. Vuelve mañana.</div>
+              ) : (
+                <div>
+                  <button className="btn-gold" style={{fontSize:".85rem",padding:"14px 32px"}} onClick={watchRescueAd}>
+                    {rescueAdPlaying ? `⏳ ${rescueAdCountdown}s` : "📺 VER ANUNCIO — CONSEGUIR 4.000 TOKENS"}
+                  </button>
+                  <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:10}}>
+                    Rescates usados hoy: {rescueCount}/3 · Siguiente en 30 min
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TOPUP BANNER — 1-199 tokens */}
+          {(user?.tokens || 0) >= 1 && (user?.tokens || 0) < 200 && (
+            <div style={{maxWidth:1100,margin:"0 auto 20px",background:"rgba(251,191,36,.08)",border:"2px solid rgba(251,191,36,.3)",borderRadius:18,padding:"24px",textAlign:"center"}}>
+              <div style={{fontSize:"1.8rem",marginBottom:8}}>⚠️</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".88rem",fontWeight:900,color:"#fbbf24",marginBottom:8,letterSpacing:".06em"}}>TOKENS BAJOS</div>
+              <div style={{fontSize:".85rem",color:"rgba(255,255,255,.45)",marginBottom:16,lineHeight:1.6}}>Tienes <strong style={{color:"#fbbf24"}}>{user?.tokens?.toLocaleString()} tokens</strong> — no suficientes para jugar.<br/>Ve un anuncio y llega hasta <strong style={{color:"#4ade80"}}>200 tokens</strong> para entrar a Starter.</div>
+              {topupAdPlaying ? (
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#fbbf24"}}>⏳ {topupAdCount}s</div>
+              ) : (
+                <button className="btn-gold" style={{fontSize:".82rem",padding:"12px 28px"}} onClick={watchTopupAd}>
+                  📺 VER ANUNCIO — LLEGAR A 200 TOKENS
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Shield section */}
           {(() => {
             const cdLeft = shieldCooldownLeft();
@@ -2424,19 +2574,6 @@ function App() {
               {histExpanded ? "▲ VER MENOS" : `▼ VER MÁS (${history.length - 5} partidas más)`}
             </button>
           )}
-
-          {/* Referral */}
-          <div className="ref-box">
-            <div className="ref-title">INVITA AMIGOS · GANA TOKENS</div>
-            <div className="ref-link">
-              <div className="ref-code">{window.location.origin}?ref={refCode}</div>
-              <button className="ref-copy" onClick={copyRefLink}>{refCopied ? "✅ COPIADO" : "COPIAR LINK"}</button>
-            </div>
-            <div className="ref-info">
-              Tu amigo recibe <strong style={{color:"#fbbf24"}}>+500 tokens extra</strong> al registrarse (1.500 total).<br/>
-              Tú recibes <strong style={{color:"#4ade80"}}>+500 tokens</strong> cuando se registre.
-            </div>
-          </div>
 
           {/* Change password */}
           <div className="pw-section">
@@ -2795,12 +2932,73 @@ function App() {
               <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
             </div>
           </div>
-          <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:18,padding:"48px 28px",textAlign:"center",marginTop:16}}>
-            <div style={{fontSize:"3rem",marginBottom:16}}>🚧</div>
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".9rem",fontWeight:900,color:"#fbbf24",letterSpacing:".06em",marginBottom:12}}>PRÓXIMAMENTE</div>
-            <div style={{fontSize:".88rem",color:"rgba(255,255,255,.4)",lineHeight:1.7,maxWidth:380,margin:"0 auto"}}>
-              Pronto podrás ver anuncios cortos para ganar tokens extra sin jugar. Vuelve más tarde — esto estará disponible muy pronto.
+
+          {/* Cycle ads */}
+          <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:18,padding:"24px",marginBottom:16}}>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:16}}>ANUNCIOS · CICLO DE 6 HORAS</div>
+
+            {/* Progress dots */}
+            <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:20}}>
+              {CYCLE_REWARDS.map((r, i) => {
+                const done = cycleAdsWatched > i;
+                const current = cycleAdsWatched === i;
+                return (
+                  <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:done?"rgba(74,222,128,.15)":current?"rgba(251,191,36,.12)":"rgba(255,255,255,.04)",border:`2px solid ${done?"#4ade80":current?"#fbbf24":"rgba(255,255,255,.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:900,color:done?"#4ade80":current?"#fbbf24":"rgba(255,255,255,.2)"}}>
+                      {done ? "✓" : `+${r}`}
+                    </div>
+                    <div style={{fontSize:".6rem",color:"rgba(255,255,255,.2)",fontFamily:"'Orbitron',sans-serif"}}>#{i+1}</div>
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Cycle exhausted */}
+            {cycleAdsWatched >= 5 && !cycleDoubleAvail && !cycleDoubleAdPlaying && (() => {
+              const tl = cycleTimeLeft();
+              return tl ? (
+                <div style={{textAlign:"center",padding:"20px",background:"rgba(255,255,255,.02)",borderRadius:14}}>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.25)",marginBottom:6}}>PRÓXIMO CICLO EN</div>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24"}}>{tl}</div>
+                </div>
+              ) : (
+                <button className="btn-gold" onClick={() => { setCycleAdsWatched(0); setCycleDoubleAvail(false); }}>🔄 NUEVO CICLO DISPONIBLE</button>
+              );
+            })()}
+
+            {/* Double offer after 5th */}
+            {cycleDoubleAvail && !cycleDoubleAdPlaying && (
+              <div style={{textAlign:"center",padding:"20px",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:14,marginBottom:12}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:900,color:"#fbbf24",marginBottom:8}}>🎉 ¡5 ANUNCIOS COMPLETADOS!</div>
+                <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",marginBottom:14}}>Ganaste <strong style={{color:"#4ade80"}}>+200 tokens</strong>. ¿Quieres doblar?</div>
+                <button className="btn-gold" onClick={watchCycleDoubleAd}>📺 Ver 1 anuncio más → <strong>+200 tokens extra</strong></button>
+              </div>
+            )}
+            {cycleDoubleAdPlaying && (
+              <div style={{textAlign:"center",padding:"20px",background:"rgba(251,191,36,.06)",borderRadius:14,marginBottom:12}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.6rem",fontWeight:900,color:"#fbbf24"}}>{cycleDoubleAdCountdown}s</div>
+                <div style={{fontSize:".75rem",color:"rgba(255,255,255,.3)",marginTop:4}}>Anuncio en reproducción...</div>
+              </div>
+            )}
+
+            {/* Current ad button */}
+            {cycleAdsWatched < 5 && !cycleAdPlaying && (
+              <button className="btn-gold" onClick={watchCycleAd}>
+                📺 Ver anuncio #{cycleAdsWatched + 1} → +{CYCLE_REWARDS[cycleAdsWatched]} {COIN}
+              </button>
+            )}
+            {cycleAdPlaying && (
+              <div style={{textAlign:"center",padding:"20px",background:"rgba(255,255,255,.04)",borderRadius:14}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.6rem",fontWeight:900,color:"#fbbf24"}}>{cycleAdCountdown}s</div>
+                <div style={{fontSize:".75rem",color:"rgba(255,255,255,.3)",marginTop:4}}>Anuncio en reproducción...</div>
+              </div>
+            )}
+
+            {cycleStart > 0 && cycleAdsWatched > 0 && cycleAdsWatched < 5 && (
+              <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",textAlign:"center",marginTop:12}}>
+                Tiempo restante del ciclo: {cycleTimeLeft() || "—"}
+              </div>
+            )}
           </div>
         </div>
       )}
