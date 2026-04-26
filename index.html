@@ -921,44 +921,14 @@ function App() {
   }, [user?.tokens]);
 
   // Season countdown
-  // Load ad counters from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("mm_ad_state") || "{}");
-      // Rescue: reset count if new day
-      const today = new Date().toISOString().split("T")[0];
-      if (saved.rescueDate === today) {
-        setRescueCount(saved.rescueCount || 0);
-        setRescueCooldown(saved.rescueCooldown || 0);
-      }
-      // Cycle: restore only if still within 6h window
-      if (saved.cycleStart && Date.now() < saved.cycleStart + 6 * 3600000) {
-        setCycleStart(saved.cycleStart);
-        setCycleAdsWatched(saved.cycleAdsWatched || 0);
-        setCycleDoubleAvail(saved.cycleDoubleAvail || false);
-      } else if (saved.cycleStart && Date.now() >= saved.cycleStart + 6 * 3600000 && (saved.cycleAdsWatched || 0) >= 5) {
-        // Cycle expired and was completed — keep exhausted state so user sees new cycle button
-        setCycleStart(saved.cycleStart);
-        setCycleAdsWatched(saved.cycleAdsWatched || 0);
-        setCycleDoubleAvail(false);
-      }
-    } catch(e) {}
-  }, []);
-
-  // Save ad counters to localStorage whenever they change
-  useEffect(() => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      localStorage.setItem("mm_ad_state", JSON.stringify({
-        rescueDate: today,
-        rescueCount,
-        rescueCooldown,
-        cycleStart,
-        cycleAdsWatched,
-        cycleDoubleAvail,
-      }));
-    } catch(e) {}
-  }, [rescueCount, rescueCooldown, cycleStart, cycleAdsWatched, cycleDoubleAvail]);
+  async function saveAdState(updates) {
+    if (!userIdRef.current || !tokenRef.current) return;
+    const today = new Date().toISOString().split("T")[0];
+    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, {
+      rescue_date: today,
+      ...updates
+    }, tokenRef.current);
+  }
   useEffect(() => {
     function tick() {
       const diff = SEASON_END - Date.now();
@@ -1288,11 +1258,25 @@ function App() {
       userIdRef.current = data.user.id;
       const profiles = await dbGet("profiles", `id=eq.${data.user.id}`, data.access_token);
       if (profiles && profiles[0]) {
-        tokRef.current = profiles[0].tokens;
+        const p = profiles[0];
+        tokRef.current = p.tokens;
         setEmail(email);
-        setUser({ name: profiles[0].username, tokens: profiles[0].tokens });
-        setStreak(profiles[0].win_streak || 0);
-        checkDailyBonus(profiles[0], data.user.id, data.access_token);
+        setUser({ name: p.username, tokens: p.tokens });
+        setStreak(p.win_streak || 0);
+        // Load ad counters from profile
+        const today = new Date().toISOString().split("T")[0];
+        if (p.rescue_date === today) {
+          setRescueCount(p.rescue_count || 0);
+          setRescueCooldown(p.rescue_cooldown || 0);
+        }
+        if (p.ad_cycle_start && Date.now() < p.ad_cycle_start + 6 * 3600000) {
+          setCycleStart(p.ad_cycle_start);
+          setCycleAdsWatched(p.ad_cycle_watched || 0);
+        } else if (p.ad_cycle_start && (p.ad_cycle_watched || 0) >= 5) {
+          setCycleStart(p.ad_cycle_start);
+          setCycleAdsWatched(p.ad_cycle_watched || 0);
+        }
+        checkDailyBonus(p, data.user.id, data.access_token);
         setScreen("lobby");
       } else {
         // No profile yet — check for pending registration data
@@ -1689,8 +1673,10 @@ function App() {
         setRescueAdPlaying(false);
         saveTok(4000);
         const used = rescueCount + 1;
+        const cd = Date.now() + 30 * 60000;
         setRescueCount(used);
-        setRescueCooldown(Date.now() + 30 * 60000);
+        setRescueCooldown(cd);
+        saveAdState({ rescue_count: used, rescue_cooldown: cd });
         dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
       }
     }, 1000);
@@ -1717,6 +1703,7 @@ function App() {
       setCycleAdsWatched(0);
       setCycleDoubleAvail(false);
       setCycleStart(0);
+      saveAdState({ ad_cycle_start: 0, ad_cycle_watched: 0 });
     }
     setCycleAdPlaying(true); setCycleAdCountdown(5);
     let currentIdx = cycleAdsWatched;
@@ -1731,8 +1718,10 @@ function App() {
         saveTok(tokRef.current + reward);
         const next = currentIdx + 1;
         setCycleAdsWatched(next);
-        if (currentIdx === 0) setCycleStart(Date.now()); // start timer on first ad
+        const newCycleStart = currentIdx === 0 ? Date.now() : cycleStart;
+        if (currentIdx === 0) setCycleStart(newCycleStart);
         if (next >= 5) setCycleDoubleAvail(true);
+        saveAdState({ ad_cycle_start: newCycleStart || cycleStart, ad_cycle_watched: next });
         dbInsertRaw("ad_views", { user_id: userIdRef.current }, tokenRef.current);
       }
     }, 1000);
