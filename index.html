@@ -639,18 +639,63 @@ function AdminStats({ sbUrl, sbKey }) {
 }
 
 const MISSION_POOL = [
-  { id:"w3",  title:"Triple victoria",    desc:"Gana 3 partidas esta semana",       cat:"wins",   req:3,  reward:150, icon:"🏆" },
-  { id:"w10", title:"Campeón semanal",    desc:"Gana 10 partidas esta semana",      cat:"wins",   req:10, reward:400, icon:"👑" },
-  { id:"w25", title:"Imparable",          desc:"Gana 25 partidas esta semana",      cat:"wins",   req:25, reward:800, icon:"⚡" },
-  { id:"g5",  title:"Calentando",         desc:"Juega 5 partidas esta semana",      cat:"games",  req:5,  reward:100, icon:"🎮" },
-  { id:"g20", title:"En forma",           desc:"Juega 20 partidas esta semana",     cat:"games",  req:20, reward:300, icon:"💪" },
-  { id:"g50", title:"Máquina de jugar",   desc:"Juega 50 partidas esta semana",     cat:"games",  req:50, reward:700, icon:"🤖" },
-  { id:"s3",  title:"En racha",           desc:"Consigue una racha de 3 victorias", cat:"streak", req:3,  reward:200, icon:"🔥" },
-  { id:"s5",  title:"Intratable",         desc:"Consigue una racha de 5 victorias", cat:"streak", req:5,  reward:500, icon:"💥" },
-  { id:"r1",  title:"Trae un amigo",      desc:"Invita a 1 persona esta semana",    cat:"refs",   req:1,  reward:300, icon:"🤝" },
-  { id:"vp",  title:"Prueba la sala VIP", desc:"Juega 1 partida en VIP",            cat:"vip",    req:1,  reward:250, icon:"💎" },
-  { id:"el",  title:"La sala Elite",      desc:"Juega 1 partida en Elite",          cat:"elite",  req:1,  reward:350, icon:"💠" },
-  { id:"st",  title:"Sala Starter",       desc:"Gana 5 partidas en Starter",        cat:"starter",req:5,  reward:120, icon:"🌱" },
+  // VICTORIAS
+  { id:"w1",  title:"Primera sangre",       desc:"Gana 1 partida esta semana",        cat:"wins",   req:1,   reward:80,   icon:"⚔️" },
+  { id:"w3",  title:"Triple victoria",      desc:"Gana 3 partidas esta semana",       cat:"wins",   req:3,   reward:150,  icon:"🏆" },
+  { id:"w5",  title:"Cinco de cinco",       desc:"Gana 5 partidas esta semana",       cat:"wins",   req:5,   reward:250,  icon:"🎯" },
+  { id:"w10", title:"Campeón semanal",      desc:"Gana 10 partidas esta semana",      cat:"wins",   req:10,  reward:400,  icon:"👑" },
+  { id:"w15", title:"Dominador",            desc:"Gana 15 partidas esta semana",      cat:"wins",   req:15,  reward:550,  icon:"💪" },
+  { id:"w20", title:"Leyenda de semana",    desc:"Gana 20 partidas esta semana",      cat:"wins",   req:20,  reward:700,  icon:"🌟" },
+  { id:"w25", title:"Imparable",            desc:"Gana 25 partidas esta semana",      cat:"wins",   req:25,  reward:900,  icon:"⚡" },
+  { id:"w30", title:"Máquina de ganar",     desc:"Gana 30 partidas esta semana",      cat:"wins",   req:30,  reward:1100, icon:"🤖" },
+  { id:"w50", title:"Cincuenta victorias",  desc:"Gana 50 partidas esta semana",      cat:"wins",   req:50,  reward:2000, icon:"🔱" },
+  // PARTIDAS JUGADAS
+  { id:"g3",  title:"Calentando motores",   desc:"Juega 3 partidas esta semana",      cat:"games",  req:3,   reward:80,   icon:"🔥" },
+  { id:"g5",  title:"Calentando",           desc:"Juega 5 partidas esta semana",      cat:"games",  req:5,   reward:120,  icon:"🎮" },
+  { id:"g10", title:"Regular",              desc:"Juega 10 partidas esta semana",     cat:"games",  req:10,  reward:200,  icon:"📅" },
+  { id:"g15", title:"Constante",            desc:"Juega 15 partidas esta semana",     cat:"games",  req:15,  reward:280,  icon:"⏰" },
+  { id:"g20", title:"En forma",             desc:"Juega 20 partidas esta semana",     cat:"games",  req:20,  reward:380,  icon:"💪" },
+  { id:"g30", title:"Adicto al juego",      desc:"Juega 30 partidas esta semana",     cat:"games",  req:30,  reward:520,  icon:"🕹️" },
+  { id:"g50", title:"Máquina de jugar",     desc:"Juega 50 partidas esta semana",     cat:"games",  req:50,  reward:800,  icon:"🤖" },
+  { id:"g75", title:"Sin descanso",         desc:"Juega 75 partidas esta semana",     cat:"games",  req:75,  reward:1200, icon:"🌊" },
+  { id:"g100",title:"Centenario",           desc:"Juega 100 partidas esta semana",    cat:"games",  req:100, reward:1800, icon:"💯" },
+  // RACHAS
+  { id:"s2",  title:"Dos seguidas",         desc:"Consigue una racha de 2 victorias", cat:"streak", req:2,   reward:120,  icon:"✌️" },
+  { id:"s3",  title:"En racha",             desc:"Consigue una racha de 3 victorias", cat:"streak", req:3,   reward:200,  icon:"🔥" },
+  { id:"s4",  title:"Cuatro en fila",       desc:"Consigue una racha de 4 victorias", cat:"streak", req:4,   reward:300,  icon:"💫" },
+  { id:"s5",  title:"Intratable",           desc:"Consigue una racha de 5 victorias", cat:"streak", req:5,   reward:500,  icon:"💥" },
+  { id:"s7",  title:"Semana perfecta",      desc:"Consigue una racha de 7 victorias", cat:"streak", req:7,   reward:750,  icon:"🌈" },
+  { id:"s10", title:"Diez imbatible",       desc:"Consigue una racha de 10 victorias",cat:"streak", req:10,  reward:1200, icon:"🏅" },
+  // REFERIDOS
+  { id:"r1",  title:"Trae un amigo",        desc:"Invita a 1 persona esta semana",    cat:"refs",   req:1,   reward:400,  icon:"🤝" },
+  { id:"r2",  title:"El conector",          desc:"Invita a 2 personas esta semana",   cat:"refs",   req:2,   reward:900,  icon:"🔗" },
+  { id:"r3",  title:"Embajador",            desc:"Invita a 3 personas esta semana",   cat:"refs",   req:3,   reward:1500, icon:"📣" },
+  { id:"r5",  title:"Reclutador",           desc:"Invita a 5 personas esta semana",   cat:"refs",   req:5,   reward:2500, icon:"🎤" },
+  // SALAS ESPECÍFICAS
+  { id:"st1", title:"Sala Starter",         desc:"Juega 1 partida en Starter",        cat:"starter",req:1,   reward:60,   icon:"🌱" },
+  { id:"st5", title:"Rey del Starter",      desc:"Gana 5 partidas en Starter",        cat:"starter",req:5,   reward:180,  icon:"🌿" },
+  { id:"st10",title:"Amo del Starter",      desc:"Gana 10 partidas en Starter",       cat:"starter",req:10,  reward:320,  icon:"🌳" },
+  { id:"md1", title:"Sala Medium",          desc:"Juega 1 partida en Medium",         cat:"medium", req:1,   reward:100,  icon:"⚡" },
+  { id:"md5", title:"Rey del Medium",       desc:"Gana 5 partidas en Medium",         cat:"medium", req:5,   reward:280,  icon:"🌩️" },
+  { id:"pr1", title:"Sala Prime",           desc:"Juega 1 partida en Prime",          cat:"prime",  req:1,   reward:150,  icon:"👑" },
+  { id:"pr3", title:"Rey del Prime",        desc:"Gana 3 partidas en Prime",          cat:"prime",  req:3,   reward:400,  icon:"💜" },
+  { id:"vp1", title:"Prueba la sala VIP",   desc:"Juega 1 partida en VIP",            cat:"vip",    req:1,   reward:250,  icon:"💎" },
+  { id:"vp3", title:"VIP de verdad",        desc:"Gana 3 partidas en VIP",            cat:"vip",    req:3,   reward:600,  icon:"💍" },
+  { id:"el1", title:"La sala Elite",        desc:"Juega 1 partida en Elite",          cat:"elite",  req:1,   reward:350,  icon:"💠" },
+  { id:"el3", title:"Élite de élite",       desc:"Gana 3 partidas en Elite",          cat:"elite",  req:3,   reward:900,  icon:"🔷" },
+  // MIXTAS
+  { id:"mx1", title:"Explorador",           desc:"Juega en 3 salas distintas",        cat:"rooms",  req:3,   reward:200,  icon:"🗺️" },
+  { id:"mx2", title:"Todo terreno",         desc:"Juega en las 5 salas",              cat:"rooms",  req:5,   reward:450,  icon:"🌍" },
+  { id:"mx3", title:"Equilibrado",          desc:"Gana 2 partidas en Medium y 2 en Prime", cat:"mp", req:4,  reward:400,  icon:"⚖️" },
+  { id:"mx4", title:"Maratón semanal",      desc:"Juega 40 partidas esta semana",     cat:"games",  req:40,  reward:650,  icon:"🏃" },
+  { id:"mx5", title:"Sin límites",          desc:"Gana 8 partidas esta semana",       cat:"wins",   req:8,   reward:320,  icon:"🚀" },
+  { id:"mx6", title:"Consistente",          desc:"Juega al menos 1 partida al día (7 días)", cat:"games", req:7, reward:500, icon:"📆" },
+  { id:"mx7", title:"El estratega",         desc:"Gana 3 en Prime y 2 en VIP",        cat:"pv",     req:5,   reward:700,  icon:"♟️" },
+  { id:"mx8", title:"Veterano",             desc:"Juega 60 partidas esta semana",     cat:"games",  req:60,  reward:950,  icon:"🎖️" },
+  { id:"mx9", title:"Imbatible",            desc:"Gana 12 partidas esta semana",      cat:"wins",   req:12,  reward:480,  icon:"🛡️" },
+  { id:"mx10",title:"El elegido",           desc:"Gana 1 partida en cada sala",       cat:"all",    req:5,   reward:550,  icon:"⭐" },
+  { id:"mx11",title:"Invicto de semana",    desc:"Consigue una racha de 6 victorias", cat:"streak", req:6,   reward:620,  icon:"🥊" },
+  { id:"mx12",title:"Cien por cien",        desc:"Gana el 80% de tus partidas (mín 10)", cat:"wins", req:8,  reward:750,  icon:"🎰" },
 ];
 function getWeekKey() {
   const now = new Date();
@@ -661,10 +706,13 @@ function getWeekKey() {
 }
 function getWeekMissions() {
   const week = parseInt(getWeekKey().split("W")[1]) || 1;
-  const shuffled = [...MISSION_POOL].sort((a, b) =>
-    ((week * 31 + a.id.charCodeAt(0)) % 97) - ((week * 31 + b.id.charCodeAt(0)) % 97)
-  );
-  return shuffled.slice(0, 4);
+  // Deterministic shuffle — same for ALL users same week
+  const shuffled = [...MISSION_POOL].sort((a, b) => {
+    const ha = (week * 2654435761 + a.id.split("").reduce((s,c)=>s+c.charCodeAt(0),0)) % 997;
+    const hb = (week * 2654435761 + b.id.split("").reduce((s,c)=>s+c.charCodeAt(0),0)) % 997;
+    return ha - hb;
+  });
+  return shuffled.slice(0, 5);
 }
 
 const LOBBY_PHRASES = [
@@ -1021,14 +1069,14 @@ function App() {
     if (!referrers || !referrers[0] || referrers[0].id === newUserId) return;
     const referrerId = referrers[0].id;
     await dbInsertRaw("referrals", { referrer_id: referrerId, referred_id: newUserId, bonus_paid: true }, KEY);
-    await dbUpdate("profiles", `id=eq.${referrerId}`, { tokens: (referrers[0].tokens || 0) + 500 }, KEY);
-    // 2nd level — grandparent gets 100 tokens
+    await dbUpdate("profiles", `id=eq.${referrerId}`, { tokens: (referrers[0].tokens || 0) + 1000 }, KEY);
+    // 2nd level — grandparent gets 200 tokens
     try {
       const lvl2 = await dbGet("referrals", `referred_id=eq.${referrerId}&select=referrer_id`, KEY);
       if (lvl2 && lvl2[0]) {
         const gp = await dbGet("profiles", `id=eq.${lvl2[0].referrer_id}&select=id,tokens`, KEY);
         if (gp && gp[0]) {
-          await dbUpdate("profiles", `id=eq.${gp[0].id}`, { tokens: (gp[0].tokens || 0) + 100 }, KEY);
+          await dbUpdate("profiles", `id=eq.${gp[0].id}`, { tokens: (gp[0].tokens || 0) + 200 }, KEY);
         }
       }
     } catch(e) {}
@@ -1847,7 +1895,7 @@ function App() {
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadTournaments(); }}>🏆 <span>Torneos</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadMissions(); }}>🎯 <span>Misiones semanales</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("ads"); }}>📺 <span>Ver anuncios — ganar tokens</span></div>
-                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("referrals"); }}>👥 <span>Invitar amigos</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); if(!refCode) loadProfile(); setScreen("referrals"); }}>👥 <span>Invitar amigos</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
                 <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
               </div>
@@ -2603,30 +2651,44 @@ function App() {
               <button className="ghost-btn" onClick={() => setScreen("lobby")}>← Lobby</button>
             </div>
           </div>
-          <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:18,padding:"28px",marginBottom:16}}>
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:12}}>TU CÓDIGO PERSONAL</div>
-            <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-              <div style={{flex:1,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:"14px 16px",fontFamily:"'Orbitron',sans-serif",fontSize:"1rem",fontWeight:700,color:"#fbbf24",letterSpacing:".1em",minWidth:160}}>
-                {user?.referral_code || "—"}
+
+          {/* Code + link */}
+          <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:18,padding:"24px",marginBottom:16}}>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:10}}>TU CÓDIGO PERSONAL</div>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24",letterSpacing:".15em",marginBottom:16,textAlign:"center",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.15)",borderRadius:12,padding:"14px"}}>
+              {refCode || "—"}
+            </div>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(255,255,255,.25)",letterSpacing:".15em",marginBottom:8}}>LINK DE INVITACIÓN</div>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              <div style={{flex:1,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"11px 14px",fontSize:".78rem",color:"rgba(255,255,255,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {refCode ? `${window.location.origin}?ref=${refCode}` : "Cargando..."}
               </div>
-              <button className="btn-gold" style={{padding:"14px 20px",fontSize:".75rem"}} onClick={() => {
-                const link = `${window.location.origin}?ref=${user?.referral_code}`;
-                navigator.clipboard?.writeText(link);
-              }}>📋 COPIAR LINK</button>
+              <button className="btn-gold" style={{padding:"11px 18px",fontSize:".7rem",flexShrink:0,whiteSpace:"nowrap"}} onClick={() => {
+                if (!refCode) return;
+                const link = `${window.location.origin}?ref=${refCode}`;
+                navigator.clipboard?.writeText(link).then(() => {}).catch(() => {});
+                alert("¡Link copiado! Compártelo con tus amigos.");
+              }}>📋 COPIAR</button>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:20}}>
+
+          {/* Rewards */}
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",color:"rgba(255,255,255,.25)",letterSpacing:".2em",marginBottom:12}}>RECOMPENSAS</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
             <div style={{background:"rgba(74,222,128,.06)",border:"1px solid rgba(74,222,128,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#4ade80",marginBottom:6}}>+500 🪙</div>
-              <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",lineHeight:1.5}}>Tú recibes cuando<br/>un amigo se registra</div>
+              <div style={{fontSize:"1.8rem",marginBottom:6}}>👤</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#4ade80",marginBottom:6}}>+1.000 🪙</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes cada vez que alguien se registra con tu código</div>
             </div>
-            <div style={{background:"rgba(96,165,250,.06)",border:"1px solid rgba(96,165,250,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#60a5fa",marginBottom:6}}>+3000 🪙</div>
-              <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",lineHeight:1.5}}>Tu amigo recibe<br/>al registrarse</div>
+            <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
+              <div style={{fontSize:"1.8rem",marginBottom:6}}>🎁</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#fbbf24",marginBottom:6}}>+500 🪙</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tu amigo recibe 500 tokens extra al registrarse con tu código</div>
             </div>
             <div style={{background:"rgba(192,132,252,.06)",border:"1px solid rgba(192,132,252,.2)",borderRadius:14,padding:"20px",textAlign:"center"}}>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#c084fc",marginBottom:6}}>+100 🪙</div>
-              <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",lineHeight:1.5}}>Tú recibes cuando<br/>tu amigo invita a otro</div>
+              <div style={{fontSize:"1.8rem",marginBottom:6}}>🔗</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.3rem",fontWeight:900,color:"#c084fc",marginBottom:6}}>+200 🪙</div>
+              <div style={{fontSize:".78rem",color:"rgba(255,255,255,.4)",lineHeight:1.6}}>Tú recibes cuando alguien invitado por tu amigo se registra</div>
             </div>
           </div>
         </div>
