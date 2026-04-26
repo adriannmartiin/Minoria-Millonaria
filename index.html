@@ -749,7 +749,7 @@ function App() {
   const [lobbyTournBanner, setLobbyTournBanner] = useState(null);
 
   // Season
-  const SEASON_END = new Date("2025-05-15T23:59:59");
+  const SEASON_END = new Date("2026-05-26T23:59:59");
   const [seasonCountdown, setSeasonCountdown] = useState("");
   const [topPlayers, setTopPlayers] = useState([]);
   const [myRank, setMyRank] = useState(null);
@@ -1891,47 +1891,42 @@ function App() {
           {/* Season countdown bar */}
           <div className="season-bar">
             <div>
-              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 15 DE MAYO</div>
+              <div className="season-label">⏱ TEMPORADA 1 · FINALIZA EL 26 DE MAYO</div>
               <div className="season-title">Los jugadores con más tokens al final de temporada recibirán premios reales</div>
             </div>
             <div className="season-timer">{seasonCountdown}</div>
           </div>
 
           {/* Top players panel */}
-          <div className="top-panel">
-            <div className="top-panel-hdr">
-              <div>
-                <div className="top-panel-title">🏆 CLASIFICACIÓN DE TEMPORADA</div>
-                <div style={{fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:3}}>Top {showAllTop ? 50 : 5} jugadores con más tokens</div>
+          {/* Compact top players widget - top left */}
+          <div style={{maxWidth:1100,margin:"0 auto 24px",display:"flex",alignItems:"flex-start",gap:16}}>
+            <div style={{background:"rgba(255,255,255,.025)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"12px 14px",width:260,flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".62rem",fontWeight:700,color:"rgba(255,255,255,.3)",letterSpacing:".15em"}}>🏆 TOP TEMPORADA</span>
+                <button onClick={()=>{setShowAllTop(v=>!v);}} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontFamily:"'Orbitron',sans-serif",fontSize:".6rem",fontWeight:700}}>
+                  {showAllTop?"▲":"▼"}
+                </button>
               </div>
-              <button onClick={loadTopPlayers} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",cursor:"pointer",fontSize:".75rem"}}>🔄</button>
-            </div>
-
-            {topPlayers.slice(0, showAllTop ? 50 : 5).map((p, i) => {
-              const isMe = p.id === userIdRef.current;
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`;
-              const posColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "rgba(255,255,255,.25)";
-              return (
-                <div key={p.id} className={`top-row${isMe?" me":""}`}>
-                  <div className="top-pos" style={{color:posColor}}>{medal}</div>
-                  <div className="top-name">{p.username}{isMe && <span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span>}</div>
-                  <div className="top-tokens">{(p.tokens||0).toLocaleString()} 🪙</div>
+              {(showAllTop ? topPlayers.slice(0,50) : topPlayers.slice(0,3)).map((p,i) => {
+                const isMe = p.id === userIdRef.current;
+                const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+                const posColor = i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"rgba(255,255,255,.2)";
+                return (
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:isMe?"rgba(251,191,36,.07)":"transparent",marginBottom:2}}>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:900,color:posColor,width:20,flexShrink:0,textAlign:"center"}}>{medal}</span>
+                    <span style={{flex:1,fontSize:".8rem",fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120}}>{p.username}{isMe&&<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}> TÚ</span>}</span>
+                    <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(p.tokens||0).toLocaleString()}</span>
+                  </div>
+                );
+              })}
+              {myRank && myRank > 50 && (
+                <div style={{display:"flex",alignItems:"center",gap:7,padding:"4px 6px",borderRadius:7,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.12)",marginTop:6}}>
+                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:900,color:"rgba(255,255,255,.25)",width:20,textAlign:"center",flexShrink:0}}>#{myRank}</span>
+                  <span style={{flex:1,fontSize:".78rem",fontWeight:700,color:"#fff",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name||user?.username}<span style={{fontSize:".58rem",color:"#fbbf24",marginLeft:3,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></span>
+                  <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,color:"#4ade80",flexShrink:0}}>{(user?.tokens||0).toLocaleString()}</span>
                 </div>
-              );
-            })}
-
-            <button className="top-expand-btn" onClick={() => setShowAllTop(v => !v)}>
-              {showAllTop ? "▲ VER MENOS" : `▼ VER TOP 50 COMPLETO`}
-            </button>
-
-            {/* My rank if outside top 50 */}
-            {myRank && myRank > 50 && (
-              <div style={{marginTop:10,padding:"10px 12px",background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.15)",borderRadius:10,display:"flex",alignItems:"center",gap:12}}>
-                <div className="top-pos" style={{color:"rgba(255,255,255,.3)"}}>#{myRank}</div>
-                <div className="top-name">{user?.name || user?.username}<span style={{fontSize:".65rem",color:"#fbbf24",marginLeft:6,fontFamily:"'Orbitron',sans-serif"}}>TÚ</span></div>
-                <div className="top-tokens">{(user?.tokens||0).toLocaleString()} 🪙</div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="lobby-hero">
