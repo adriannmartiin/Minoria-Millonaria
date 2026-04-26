@@ -1175,6 +1175,10 @@ function App() {
     tokens_gift: 0,
     expires_hours: 48
   });
+  // Admin questions
+  const [adminQuestions, setAdminQuestions] = useState([]);
+  const [newQ, setNewQ] = useState({ question_a:"", question_b:"", category:"General" });
+  const [adminQMsg, setAdminQMsg] = useState("");
   // Gift popup for players
   const [pendingGifts, setPendingGifts] = useState([]);
   const [showGift, setShowGift] = useState(null);
@@ -1201,9 +1205,39 @@ function App() {
     setAdminAnnouncements(Array.isArray(data) ? data : []);
   }
 
+  async function loadAdminQuestions() {
+    const data = await dbGet("questions", "order=created_at.desc", KEY);
+    setAdminQuestions(Array.isArray(data) ? data : []);
+  }
+
   useEffect(() => {
-    if (screen === "admin") { loadAdminTournaments(); loadAdminAnnouncements(); }
+    if (screen === "admin") {
+      loadAdminTournaments();
+      loadAdminAnnouncements();
+      loadAdminQuestions();
+    }
   }, [screen]);
+
+  async function createQuestion() {
+    if (!newQ.question_a.trim() || !newQ.question_b.trim()) { setAdminQMsg("❌ Completa las dos opciones"); return; }
+    await dbInsertRaw("questions", { question_a: newQ.question_a.trim(), question_b: newQ.question_b.trim(), category: newQ.category, active: true }, KEY);
+    setAdminQMsg("✅ Pregunta añadida");
+    setNewQ({ question_a:"", question_b:"", category:"General" });
+    loadAdminQuestions();
+  }
+
+  async function toggleQuestion(q) {
+    await fetch(`${SB}/rest/v1/questions?id=eq.${q.id}`, {
+      method:"PATCH", headers:{ apikey:KEY, Authorization:`Bearer ${KEY}`, "Content-Type":"application/json" },
+      body: JSON.stringify({ active: !q.active })
+    });
+    loadAdminQuestions();
+  }
+
+  async function deleteQuestion(id) {
+    await fetch(`${SB}/rest/v1/questions?id=eq.${id}`, { method:"DELETE", headers:{ apikey:KEY, Authorization:`Bearer ${KEY}` } });
+    loadAdminQuestions();
+  }
 
   async function createAnnouncement() {
     if (!newAnn.title || !newAnn.message) { setAdminMsg("❌ Título y mensaje son obligatorios"); return; }
@@ -1505,9 +1539,18 @@ function App() {
   }
 
   async function startNewRound(r) {
-    const q = rand(QUESTIONS);
+    // Try to get question from DB, fallback to hardcoded
+    let q = null;
+    try {
+      const qs = await dbGet("questions", "active=eq.true&select=question_a,question_b", KEY);
+      if (Array.isArray(qs) && qs.length > 0) {
+        const pick = qs[Math.floor(Math.random() * qs.length)];
+        q = { a: pick.question_a, b: pick.question_b };
+      }
+    } catch(e) {}
+    if (!q) q = rand(QUESTIONS);
+
     resultSaved.current = false;
-    // Reset vote change counter
     voteChangeCount.current = 0;
     setShowVoteMsg(false);
     voteRef.current = null; setVote(null); setResult(null); setVC({ a: 0, b: 0 });
@@ -2536,6 +2579,7 @@ function App() {
 
           <div className="admin-tabs">
             <div className={`admin-tab${adminTab==="tournaments"?" active":""}`} onClick={() => setAdminTab("tournaments")}>TORNEOS</div>
+            <div className={`admin-tab${adminTab==="questions"?" active":""}`} onClick={() => setAdminTab("questions")}>PREGUNTAS</div>
             <div className={`admin-tab${adminTab==="announcements"?" active":""}`} onClick={() => setAdminTab("announcements")}>NOTIFICACIONES</div>
             <div className={`admin-tab${adminTab==="stats"?" active":""}`} onClick={() => setAdminTab("stats")}>ESTADÍSTICAS</div>
           </div>
@@ -2594,6 +2638,64 @@ function App() {
                       </div>
                     </div>
                     <button className="del-btn" onClick={() => deleteTournament(t.id)}>🗑️ BORRAR</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {adminTab === "questions" && (
+            <div>
+              {adminQMsg && <div className="ok" style={{maxWidth:"100%",marginBottom:16}}>{adminQMsg}</div>}
+              <div className="admin-form">
+                <div className="admin-form-title">AÑADIR NUEVA PREGUNTA</div>
+                <div className="admin-grid">
+                  <div className="field" style={{marginBottom:0}}>
+                    <label>Opción A</label>
+                    <input type="text" placeholder="🐶 Perros" value={newQ.question_a}
+                      onChange={e => setNewQ(q => ({...q, question_a: e.target.value}))} />
+                  </div>
+                  <div className="field" style={{marginBottom:0}}>
+                    <label>Opción B</label>
+                    <input type="text" placeholder="🐱 Gatos" value={newQ.question_b}
+                      onChange={e => setNewQ(q => ({...q, question_b: e.target.value}))} />
+                  </div>
+                  <div className="field" style={{marginBottom:0}}>
+                    <label>Categoría</label>
+                    <select className="tz-select" style={{width:"100%",padding:"14px 16px"}} value={newQ.category}
+                      onChange={e => setNewQ(q => ({...q, category: e.target.value}))}>
+                      {["General","Animales","Comida","Deporte","Tecnología","Entretenimiento","Lifestyle","Viajes","Psicología","Sociedad","Bebidas","Cultura","Ocio"].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button className="btn-gold" style={{marginTop:16,width:"auto",padding:"12px 28px"}} onClick={createQuestion}>
+                  ➕ AÑADIR PREGUNTA
+                </button>
+              </div>
+
+              <div className="section-title">
+                PREGUNTAS ({adminQuestions.filter(q=>q.active).length} activas · {adminQuestions.filter(q=>!q.active).length} pausadas)
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:14}}>
+                {adminQuestions.length === 0 && <div style={{color:"rgba(255,255,255,.25)",fontSize:".85rem"}}>No hay preguntas</div>}
+                {adminQuestions.map(q => (
+                  <div key={q.id} className="admin-tourn-row" style={{opacity: q.active ? 1 : 0.45}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,color:"#fff"}}>
+                        {q.question_a} <span style={{color:"rgba(255,255,255,.2)"}}>vs</span> {q.question_b}
+                      </div>
+                      <div style={{fontSize:".72rem",color:"rgba(255,255,255,.3)",marginTop:3}}>
+                        {q.category} · {q.active ? <span style={{color:"#4ade80"}}>✅ Activa</span> : <span style={{color:"#f87171"}}>⏸ Pausada</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexShrink:0}}>
+                      <button onClick={() => toggleQuestion(q)} style={{background:q.active?"rgba(251,191,36,.1)":"rgba(74,222,128,.1)",border:`1px solid ${q.active?"rgba(251,191,36,.25)":"rgba(74,222,128,.25)"}`,borderRadius:8,padding:"7px 12px",color:q.active?"#fbbf24":"#4ade80",fontSize:".65rem",fontFamily:"'Orbitron',sans-serif",fontWeight:700,cursor:"pointer"}}>
+                        {q.active ? "⏸ PAUSAR" : "▶ ACTIVAR"}
+                      </button>
+                      <button className="del-btn" onClick={() => deleteQuestion(q.id)}>🗑️</button>
+                    </div>
                   </div>
                 ))}
               </div>
