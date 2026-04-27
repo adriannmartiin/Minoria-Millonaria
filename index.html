@@ -2268,6 +2268,7 @@ function App() {
               <div className="token-pill">
                 {COIN} <span key={tokAnimKey} style={{display:"inline-block",animation:tokAnimKey>0?"tok-pop 0.4s ease":"none"}}>{user?.tokens?.toLocaleString()}</span>
               </div>
+              {bonusAvailable ? (
                 <button className="ghost-btn" style={{background:"rgba(74,222,128,.12)",borderColor:"rgba(74,222,128,.35)",color:"#4ade80",fontWeight:700,animation:"pulse-gold 1.5s ease-in-out infinite"}} onClick={claimDailyBonus}>
                   🎁 +{bonusAmount} BONUS
                 </button>
