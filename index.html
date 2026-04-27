@@ -616,6 +616,78 @@ function DailyQAdmin({ sbUrl, sbKey }) {
   );
 }
 
+function DailyResultsAdmin({ sbUrl, sbKey }) {
+  const [questions, setQuestions] = React.useState([]);
+  const [results, setResults] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const qs = await fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true&select=id,question_a,question_b,daily_date,daily_reward&order=daily_date.desc&limit=30`, {headers:{apikey:sbKey}}).then(r=>r.json());
+        if (!Array.isArray(qs)) { setLoading(false); return; }
+        setQuestions(qs);
+        // Load vote counts for each question
+        const res = {};
+        for (const q of qs) {
+          const [va, vb] = await Promise.all([
+            fetch(`${sbUrl}/rest/v1/round_votes?round_id=eq.daily_${q.id}_a&select=user_id`, {headers:{apikey:sbKey}}).then(r=>r.json()),
+            fetch(`${sbUrl}/rest/v1/round_votes?round_id=eq.daily_${q.id}_b&select=user_id`, {headers:{apikey:sbKey}}).then(r=>r.json()),
+          ]);
+          const cA = Array.isArray(va) ? va.length : 0;
+          const cB = Array.isArray(vb) ? vb.length : 0;
+          res[q.id] = { cA, cB, total: cA + cB };
+        }
+        setResults(res);
+      } catch(e) {}
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  if (loading) return <div style={{color:"rgba(255,255,255,.3)",padding:"20px",textAlign:"center"}}>Cargando resultados...</div>;
+  if (!questions.length) return <div style={{color:"rgba(255,255,255,.3)",padding:"20px",textAlign:"center"}}>No hay preguntas diarias todavía.</div>;
+
+  return (
+    <div>
+      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:20}}>RESULTADOS DE PREGUNTAS DIARIAS</div>
+      {questions.map(q => {
+        const r = results[q.id] || { cA:0, cB:0, total:0 };
+        const pA = r.total ? Math.round((r.cA / r.total) * 100) : 50;
+        const pB = 100 - pA;
+        const winner = r.cA > r.cB ? q.question_a : r.cB > r.cA ? q.question_b : "Empate";
+        return (
+          <div key={q.id} style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"16px 20px",marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(255,255,255,.3)"}}>{q.daily_date}</div>
+              <div style={{fontSize:".72rem",color:"#fbbf24",fontFamily:"'Orbitron',sans-serif"}}>🪙 {q.daily_reward||100} tokens · {r.total} respuestas</div>
+            </div>
+            <div style={{fontSize:".9rem",fontWeight:700,color:"#fff",marginBottom:12}}>
+              <span style={{color:"#4ade80"}}>{q.question_a}</span>
+              <span style={{color:"rgba(255,255,255,.25)",margin:"0 10px"}}>vs</span>
+              <span style={{color:"#60a5fa"}}>{q.question_b}</span>
+            </div>
+            {r.total > 0 && (
+              <>
+                <div style={{height:10,borderRadius:100,background:"rgba(255,255,255,.05)",overflow:"hidden",display:"flex",marginBottom:6}}>
+                  <div style={{width:`${pA}%`,background:"linear-gradient(90deg,#4ade80,#22c55e)",borderRadius:"100px 0 0 100px"}}></div>
+                  <div style={{flex:1,background:"linear-gradient(90deg,#3b82f6,#60a5fa)",borderRadius:"0 100px 100px 0"}}></div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",fontFamily:"'Orbitron',sans-serif",fontWeight:700}}>
+                  <span style={{color:"#4ade80"}}>{pA}% ({r.cA})</span>
+                  <span style={{color:"rgba(255,255,255,.3)",fontSize:".68rem"}}>Mayoría: <strong style={{color:"#fbbf24"}}>{winner}</strong></span>
+                  <span style={{color:"#60a5fa"}}>{pB}% ({r.cB})</span>
+                </div>
+              </>
+            )}
+            {r.total === 0 && <div style={{fontSize:".75rem",color:"rgba(255,255,255,.2)"}}>Sin respuestas todavía</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SeasonAdmin({ sbUrl, sbKey }) {
   const [msg, setMsg] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -1086,21 +1158,37 @@ function App() {
   async function loadDailyQ(profileDailyDate) {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date,daily_reward`, KEY);
-      if (!qs || !qs[0]) return;
+      // Use tokenRef if available, fall back to KEY
+      const tok = tokenRef.current || KEY;
+      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date,daily_reward`, tok);
+      if (!qs || !qs[0]) {
+        // Try without date filter in case date format differs
+        const qs2 = await dbGet("questions", `is_daily=eq.true&select=id,question_a,question_b,daily_date,daily_reward&order=id.desc&limit=1`, tok);
+        if (!qs2 || !qs2[0] || qs2[0].daily_date !== today) return;
+        qs2[0].reward = qs2[0].daily_reward || 100;
+        setDailyQ(qs2[0]);
+        if (profileDailyDate === today) {
+          setDailyVoted(true);
+          const [va, vb] = await Promise.all([
+            dbGet("round_votes", `round_id=eq.daily_${qs2[0].id}_a&select=user_id`, tok),
+            dbGet("round_votes", `round_id=eq.daily_${qs2[0].id}_b&select=user_id`, tok),
+          ]);
+          setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward: qs2[0].reward });
+        }
+        return;
+      }
       const q = qs[0];
       q.reward = q.daily_reward || 100;
       setDailyQ(q);
       if (profileDailyDate === today) {
         setDailyVoted(true);
-        // Load current vote counts for display
         const [va, vb] = await Promise.all([
-          dbGet("round_votes", `round_id=eq.daily_${q.id}_a&select=user_id`, KEY),
-          dbGet("round_votes", `round_id=eq.daily_${q.id}_b&select=user_id`, KEY),
+          dbGet("round_votes", `round_id=eq.daily_${q.id}_a&select=user_id`, tok),
+          dbGet("round_votes", `round_id=eq.daily_${q.id}_b&select=user_id`, tok),
         ]);
-        setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0 });
+        setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward: q.reward });
       }
-    } catch(e) {}
+    } catch(e) { console.error("loadDailyQ error:", e); }
   }
 
   async function submitDailyVote(option) {
@@ -1513,7 +1601,7 @@ function App() {
           setShieldAdsWatched(p.shield_ads_watched || 0);
         }
         checkDailyBonus(p, data.user.id, data.access_token);
-        loadDailyQ(p.daily_q_date || "");
+        setTimeout(() => loadDailyQ(p.daily_q_date || ""), 300);
         setScreen("lobby");
       } else {
         // No profile yet — check for pending registration data
@@ -3612,6 +3700,7 @@ function App() {
             <div className={`admin-tab${adminTab==="announcements"?" active":""}`} onClick={() => setAdminTab("announcements")}>NOTIFICACIONES</div>
             <div className={`admin-tab${adminTab==="stats"?" active":""}`} onClick={() => setAdminTab("stats")}>ESTADÍSTICAS</div>
             <div className={`admin-tab${adminTab==="season"?" active":""}`} onClick={() => setAdminTab("season")} style={{borderColor:"rgba(239,68,68,.4)",color:adminTab==="season"?"#f87171":"rgba(239,68,68,.6)"}}>🏆 TEMPORADA</div>
+            <div className={`admin-tab${adminTab==="dailyresults"?" active":""}`} onClick={() => setAdminTab("dailyresults")} style={{borderColor:"rgba(96,165,250,.3)",color:adminTab==="dailyresults"?"#60a5fa":"rgba(96,165,250,.5)"}}>📊 ENCUESTAS</div>
           </div>
 
           {adminTab === "tournaments" && (
@@ -3807,6 +3896,10 @@ function App() {
 
           {adminTab === "season" && (
             <SeasonAdmin sbUrl={SB} sbKey={KEY} />
+          )}
+
+          {adminTab === "dailyresults" && (
+            <DailyResultsAdmin sbUrl={SB} sbKey={KEY} />
           )}
         </div>
       )}
