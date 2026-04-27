@@ -565,44 +565,49 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 function DailyQAdmin({ sbUrl, sbKey }) {
   const [qa, setQa] = React.useState("");
   const [qb, setQb] = React.useState("");
+  const [reward, setReward] = React.useState(100);
   const [date, setDate] = React.useState(new Date().toISOString().split("T")[0]);
   const [msg, setMsg] = React.useState("");
   const [current, setCurrent] = React.useState(null);
 
   React.useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
-    fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date`, {headers:{apikey:sbKey}})
+    fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date,daily_reward`, {headers:{apikey:sbKey}})
       .then(r=>r.json()).then(d => { if(Array.isArray(d)&&d[0]) setCurrent(d[0]); }).catch(()=>{});
   }, []);
 
   async function saveDailyQ() {
     if (!qa.trim() || !qb.trim()) { setMsg("❌ Completa las dos opciones"); return; }
-    // Clear previous daily
     await fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true`, {
       method:"PATCH", headers:{apikey:sbKey, Authorization:`Bearer ${sbKey}`, "Content-Type":"application/json", Prefer:"return=minimal"},
       body: JSON.stringify({ is_daily: false, daily_date: "" })
     });
-    // Insert new daily question
     await fetch(`${sbUrl}/rest/v1/questions`, {
       method:"POST", headers:{apikey:sbKey, Authorization:`Bearer ${sbKey}`, "Content-Type":"application/json", Prefer:"return=minimal"},
-      body: JSON.stringify({ question_a: qa, question_b: qb, active: true, is_daily: true, daily_date: date })
+      body: JSON.stringify({ question_a: qa, question_b: qb, active: true, is_daily: true, daily_date: date, daily_reward: Number(reward) })
     });
-    setMsg(`✅ Pregunta del día guardada para ${date}`);
-    setCurrent({ question_a: qa, question_b: qb, daily_date: date });
+    setMsg(`✅ Pregunta del día guardada para ${date} · Recompensa: ${reward} tokens`);
+    setCurrent({ question_a: qa, question_b: qb, daily_date: date, daily_reward: Number(reward) });
     setQa(""); setQb("");
   }
 
   const inp = {background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"10px 14px",color:"#fff",fontSize:".85rem",width:"100%",outline:"none",fontFamily:"inherit"};
   return (
     <div>
-      {current && <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",marginBottom:12}}>Activa hoy ({current.daily_date}): <strong style={{color:"#60a5fa"}}>{current.question_a}</strong> vs <strong style={{color:"#4ade80"}}>{current.question_b}</strong></div>}
+      {current && <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",marginBottom:12}}>Activa hoy ({current.daily_date}): <strong style={{color:"#60a5fa"}}>{current.question_a}</strong> vs <strong style={{color:"#4ade80"}}>{current.question_b}</strong> · <strong style={{color:"#fbbf24"}}>{current.daily_reward||100} tokens</strong></div>}
       {msg && <div style={{fontSize:".78rem",color:msg.startsWith("✅")?"#4ade80":"#f87171",marginBottom:10}}>{msg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
         <input style={inp} placeholder="Opción A (ej: 🐶 Perros)" value={qa} onChange={e=>setQa(e.target.value)} />
         <input style={inp} placeholder="Opción B (ej: 🐱 Gatos)" value={qb} onChange={e=>setQb(e.target.value)} />
       </div>
-      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
         <input type="date" style={{...inp,width:"auto"}} value={date} onChange={e=>setDate(e.target.value)} />
+        <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 12px"}}>
+          <span style={{fontSize:".78rem",color:"rgba(255,255,255,.4)"}}>🪙 Recompensa:</span>
+          <input type="number" min="50" max="2000" step="50" value={reward} onChange={e=>setReward(e.target.value)}
+            style={{background:"none",border:"none",color:"#fbbf24",fontFamily:"'Orbitron',sans-serif",fontSize:".85rem",fontWeight:700,width:70,outline:"none"}} />
+          <span style={{fontSize:".75rem",color:"rgba(255,255,255,.3)"}}>tokens</span>
+        </div>
         <button onClick={saveDailyQ} style={{background:"rgba(96,165,250,.15)",border:"1px solid rgba(96,165,250,.3)",borderRadius:8,padding:"10px 20px",color:"#60a5fa",fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
           GUARDAR PREGUNTA DEL DÍA
         </button>
@@ -1081,11 +1086,19 @@ function App() {
   async function loadDailyQ(profileDailyDate) {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date`, KEY);
+      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date,daily_reward`, KEY);
       if (!qs || !qs[0]) return;
-      setDailyQ(qs[0]);
+      const q = qs[0];
+      q.reward = q.daily_reward || 100;
+      setDailyQ(q);
       if (profileDailyDate === today) {
         setDailyVoted(true);
+        // Load current vote counts for display
+        const [va, vb] = await Promise.all([
+          dbGet("round_votes", `round_id=eq.daily_${q.id}_a&select=user_id`, KEY),
+          dbGet("round_votes", `round_id=eq.daily_${q.id}_b&select=user_id`, KEY),
+        ]);
+        setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0 });
       }
     } catch(e) {}
   }
@@ -1094,23 +1107,22 @@ function App() {
     if (dailyVoted || !dailyQ) return;
     const today = new Date().toISOString().split("T")[0];
     setDailyVote(option);
-    // Count total votes to determine minority
-    const [votesA, votesB] = await Promise.all([
+    setDailyVoted(true);
+    // Register vote
+    try { await dbInsertRaw("round_votes", { round_id: `daily_${dailyQ.id}_${option}`, user_id: userIdRef.current, vote: option }, tokenRef.current); } catch(e) {}
+    // Give tokens
+    const reward = dailyQ.reward || 100;
+    await saveTok(tokRef.current + reward);
+    // Mark as voted today
+    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { daily_q_date: today }, tokenRef.current);
+    // Load fresh vote counts
+    const [va, vb] = await Promise.all([
       dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_a&select=user_id`, KEY),
       dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_b&select=user_id`, KEY),
     ]);
-    const cA = (Array.isArray(votesA) ? votesA.length : 0) + (option === "a" ? 1 : 0);
-    const cB = (Array.isArray(votesB) ? votesB.length : 0) + (option === "b" ? 1 : 0);
-    // Register vote
-    await dbInsertRaw("round_votes", { round_id: `daily_${dailyQ.id}_${option}`, user_id: userIdRef.current, vote: option }, tokenRef.current);
-    // Give 100 tokens
-    await saveTok(tokRef.current + 100);
-    // Mark as voted today
-    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { daily_q_date: today }, tokenRef.current);
-    setDailyVoted(true);
-    const minority = cA < cB ? "a" : "b";
-    setDailyResult({ minority, cA, cB, won: option === minority });
+    setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward });
     setDailyDoubleAvail(true);
+    setTimeout(() => setShowDailyDouble(true), 600); // small delay so tokens animate first
   }
 
   function watchDailyDoubleAd() {
@@ -1122,7 +1134,9 @@ function App() {
         clearInterval(dailyDoubleTimer.current);
         setDailyDoubleAdPlaying(false);
         setDailyDoubleAvail(false);
-        saveTok(tokRef.current + 100);
+        setShowDailyDouble(false);
+        const reward = dailyResult ? dailyResult.reward : 100;
+        saveTok(tokRef.current + reward);
         dbInsertRaw("ad_views", { user_id: userIdRef.current }, KEY);
       }
     }, 1000);
@@ -1845,6 +1859,7 @@ function App() {
   const [dailyVote, setDailyVote] = useState(null);
   const [dailyResult, setDailyResult] = useState(null);
   const [dailyDoubleAvail, setDailyDoubleAvail] = useState(false);
+  const [showDailyDouble, setShowDailyDouble] = useState(false);
   const [dailyDoubleAdPlaying, setDailyDoubleAdPlaying] = useState(false);
   const [dailyDoubleAdCount, setDailyDoubleAdCount] = useState(0);
   const dailyDoubleTimer = useRef(null);
@@ -2577,40 +2592,84 @@ function App() {
           {/* Daily Question */}
           {dailyQ && (
             <div style={{maxWidth:1100,margin:"0 auto 20px",background:"rgba(96,165,250,.04)",border:"1px solid rgba(96,165,250,.15)",borderRadius:16,padding:"20px 24px"}}>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(96,165,250,.6)",letterSpacing:".2em",marginBottom:10}}>📅 PREGUNTA DEL DÍA · +100 🪙 GRATIS</div>
-              <div style={{fontSize:"1rem",fontWeight:700,color:"#fff",marginBottom:16,textAlign:"center"}}>{dailyQ.question_a} <span style={{color:"rgba(255,255,255,.3)"}}>vs</span> {dailyQ.question_b}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(96,165,250,.6)",letterSpacing:".2em"}}>📅 PREGUNTA DEL DÍA</div>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:900,color:"#4ade80"}}>+{dailyQ.reward||100} 🪙 GRATIS</div>
+              </div>
+              <div style={{fontSize:"1rem",fontWeight:700,color:"#fff",marginBottom:6,textAlign:"center"}}>¿Qué prefieres?</div>
+              <div style={{fontSize:".9rem",color:"rgba(255,255,255,.5)",marginBottom:16,textAlign:"center"}}>Elige una opción y gana {dailyQ.reward||100} tokens</div>
+
               {!dailyVoted ? (
                 <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
-                  <button onClick={() => submitDailyVote("a")} style={{flex:1,minWidth:120,maxWidth:200,padding:"12px",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.3)",borderRadius:12,color:"#4ade80",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>
+                  <button onClick={() => submitDailyVote("a")} style={{flex:1,minWidth:130,maxWidth:220,padding:"14px",background:"rgba(74,222,128,.08)",border:"1px solid rgba(74,222,128,.25)",borderRadius:14,color:"#4ade80",fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,cursor:"pointer",transition:"all .2s"}}
+                    onMouseOver={e=>e.currentTarget.style.background="rgba(74,222,128,.15)"}
+                    onMouseOut={e=>e.currentTarget.style.background="rgba(74,222,128,.08)"}>
                     {dailyQ.question_a}
                   </button>
-                  <button onClick={() => submitDailyVote("b")} style={{flex:1,minWidth:120,maxWidth:200,padding:"12px",background:"rgba(96,165,250,.1)",border:"1px solid rgba(96,165,250,.3)",borderRadius:12,color:"#60a5fa",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>
+                  <button onClick={() => submitDailyVote("b")} style={{flex:1,minWidth:130,maxWidth:220,padding:"14px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:14,color:"#60a5fa",fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,cursor:"pointer",transition:"all .2s"}}
+                    onMouseOver={e=>e.currentTarget.style.background="rgba(96,165,250,.15)"}
+                    onMouseOut={e=>e.currentTarget.style.background="rgba(96,165,250,.08)"}>
                     {dailyQ.question_b}
                   </button>
                 </div>
               ) : dailyResult ? (
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:".85rem",color:"rgba(255,255,255,.5)",marginBottom:8}}>
-                    {dailyQ.question_a}: <strong style={{color:"#4ade80"}}>{dailyResult.cA}</strong> · {dailyQ.question_b}: <strong style={{color:"#60a5fa"}}>{dailyResult.cB}</strong>
+                <div>
+                  <div style={{fontSize:".78rem",color:"rgba(255,255,255,.35)",textAlign:"center",marginBottom:10}}>
+                    Tu elección: <strong style={{color:"#fbbf24"}}>{dailyVote === "a" ? dailyQ.question_a : dailyQ.question_b}</strong>
                   </div>
-                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:900,marginBottom:12,color: dailyResult.won ? "#4ade80" : "#f87171"}}>
-                    {dailyResult.won ? "🎉 ¡Estabas en minoría! +100 🪙" : `✅ Respondido · Minoría: ${dailyResult.minority === "a" ? dailyQ.question_a : dailyQ.question_b} · +100 🪙`}
-                  </div>
-                  {dailyDoubleAvail && !dailyDoubleAdPlaying && (
-                    <button onClick={watchDailyDoubleAd} style={{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.25)",borderRadius:10,padding:"10px 20px",color:"#fbbf24",fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:700,cursor:"pointer"}}>
-                      📺 Ver anuncio → +100 🪙 extra
-                    </button>
-                  )}
-                  {dailyDoubleAdPlaying && (
-                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.2rem",fontWeight:900,color:"#fbbf24"}}>{dailyDoubleAdCount}s</div>
-                  )}
-                  {!dailyDoubleAvail && !dailyDoubleAdPlaying && dailyResult && (
-                    <div style={{fontSize:".72rem",color:"#4ade80"}}>✅ ¡Bonus duplicado!</div>
-                  )}
+                  {/* Vote bars */}
+                  {(() => {
+                    const total = (dailyResult.cA + dailyResult.cB) || 1;
+                    const pA = Math.round((dailyResult.cA / total) * 100);
+                    const pB = 100 - pA;
+                    return (
+                      <div style={{maxWidth:500,margin:"0 auto"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"rgba(255,255,255,.5)",marginBottom:4}}>
+                          <span style={{color:"#4ade80"}}>{dailyQ.question_a}</span>
+                          <span style={{color:"#60a5fa"}}>{dailyQ.question_b}</span>
+                        </div>
+                        <div style={{height:14,borderRadius:100,background:"rgba(255,255,255,.06)",overflow:"hidden",display:"flex"}}>
+                          <div style={{width:`${pA}%`,background:"linear-gradient(90deg,#4ade80,#22c55e)",transition:"width .6s ease",borderRadius:"100px 0 0 100px"}}></div>
+                          <div style={{flex:1,background:"linear-gradient(90deg,#3b82f6,#60a5fa)",borderRadius:"0 100px 100px 0"}}></div>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",fontFamily:"'Orbitron',sans-serif",fontWeight:700,marginTop:6}}>
+                          <span style={{color:"#4ade80"}}>{pA}% ({dailyResult.cA})</span>
+                          <span style={{color:"#60a5fa"}}>{pB}% ({dailyResult.cB})</span>
+                        </div>
+                        <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:6}}>{total} {total===1?"persona":"personas"} han respondido hoy</div>
+                      </div>
+                    );
+                  })()}
+                  <div style={{textAlign:"center",marginTop:10,fontSize:".78rem",color:"#4ade80",fontFamily:"'Orbitron',sans-serif"}}>✅ +{dailyResult.reward||100} tokens recibidos</div>
                 </div>
               ) : (
-                <div style={{textAlign:"center",fontSize:".82rem",color:"rgba(255,255,255,.35)"}}>✅ Ya respondiste hoy — vuelve mañana</div>
+                <div style={{textAlign:"center",fontSize:".82rem",color:"rgba(255,255,255,.3)"}}>✅ Ya respondiste hoy — vuelve mañana</div>
               )}
+            </div>
+          )}
+
+          {/* Daily double modal */}
+          {showDailyDouble && (
+            <div className="modal-overlay">
+              <div className="modal-card" style={{maxWidth:380,position:"relative"}}>
+                <button onClick={() => setShowDailyDouble(false)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"rgba(255,255,255,.3)",fontSize:"1.2rem",cursor:"pointer",lineHeight:1}}>✕</button>
+                <div className="modal-icon">🎁</div>
+                <div className="modal-title">¡+{dailyResult?.reward||100} 🪙 CONSEGUIDOS!</div>
+                <div className="modal-text" style={{marginBottom:16}}>¿Quieres doblar tu recompensa? Ve un anuncio corto y consigue {dailyResult?.reward||100} tokens extra.</div>
+                {!dailyDoubleAdPlaying ? (
+                  <button className="btn-gold" onClick={watchDailyDoubleAd}>
+                    📺 Ver anuncio → +{dailyResult?.reward||100} 🪙 extra
+                  </button>
+                ) : (
+                  <div style={{textAlign:"center",padding:"16px"}}>
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"2rem",fontWeight:900,color:"#fbbf24"}}>{dailyDoubleAdCount}s</div>
+                    <div style={{fontSize:".75rem",color:"rgba(255,255,255,.3)",marginTop:4}}>Anuncio en reproducción...</div>
+                  </div>
+                )}
+                <button onClick={() => setShowDailyDouble(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,.2)",fontSize:".78rem",cursor:"pointer",marginTop:12,width:"100%"}}>
+                  No, gracias
+                </button>
+              </div>
             </div>
           )}
 
