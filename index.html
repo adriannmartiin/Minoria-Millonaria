@@ -1859,6 +1859,13 @@ function App() {
 
   async function pollRound(r) {
     try {
+      // Check if player still has enough tokens to be in this room
+      if (tokRef.current < r.cost) {
+        stopGame();
+        setScreen("lobby");
+        return;
+      }
+
       const rows = await dbGet("game_rooms", `room_id=eq.${r.id}`, tokenRef.current);
       const row = rows && rows[0];
       if (!row) { await startNewRound(r); return; }
@@ -2299,8 +2306,8 @@ function App() {
           {(() => {
             const cdLeft = shieldCooldownLeft();
             const onCooldown = cdLeft !== "";
-            const shieldIcon = shieldLevel === 2 ? "🛡️" : shieldLevel === 1 ? "🔰" : "⚪";
-            const shieldIconStyle = shieldLevel === 2 ? {animation:"shield-pulse-full 2s ease-in-out infinite"} : shieldLevel === 1 ? {animation:"shield-pulse 2s ease-in-out infinite"} : {opacity:.35};
+            const shieldIcon = shieldLevel === 2 ? "🛡️" : shieldLevel === 1 ? "🔰" : "🛡️";
+            const shieldIconStyle = shieldLevel === 2 ? {animation:"shield-pulse-full 2s ease-in-out infinite"} : shieldLevel === 1 ? {animation:"shield-pulse 2s ease-in-out infinite"} : {opacity:.2, filter:"grayscale(1)"};
             return (
               <div className="shield-lobby">
                 <div className="shield-icon-big" style={shieldIconStyle}>{shieldIcon}</div>
@@ -2500,13 +2507,15 @@ function App() {
                 <div className="next-round">🔄 Nueva ronda en {nextIn}s...</div>
                 {resultPhrase && <div className="result-phrase">"{resultPhrase}"</div>}
                 {result.shieldUsed === 2 && (
-                  <div style={{fontSize:".78rem",color:"#4ade80",textAlign:"center",marginTop:8,padding:"8px 16px",background:"rgba(74,222,128,.08)",borderRadius:10,border:"1px solid rgba(74,222,128,.2)"}}>
-                    🛡️ Protección total — no has perdido tokens
+                  <div style={{fontSize:".9rem",fontWeight:700,color:"#4ade80",textAlign:"center",marginTop:12,padding:"14px 20px",background:"rgba(74,222,128,.1)",borderRadius:14,border:"2px solid rgba(74,222,128,.35)"}}>
+                    🛡️ ¡ESCUDO ACTIVADO!<br/>
+                    <span style={{fontSize:".78rem",fontWeight:400,opacity:.8}}>Protección total — no has perdido ningún token</span>
                   </div>
                 )}
                 {result.shieldUsed === 1 && (
-                  <div style={{fontSize:".78rem",color:"#60a5fa",textAlign:"center",marginTop:8,padding:"8px 16px",background:"rgba(96,165,250,.08)",borderRadius:10,border:"1px solid rgba(96,165,250,.2)"}}>
-                    🔰 Protección media — solo perdiste la mitad
+                  <div style={{fontSize:".9rem",fontWeight:700,color:"#60a5fa",textAlign:"center",marginTop:12,padding:"14px 20px",background:"rgba(96,165,250,.1)",borderRadius:14,border:"2px solid rgba(96,165,250,.35)"}}>
+                    🔰 ¡ESCUDO ACTIVADO!<br/>
+                    <span style={{fontSize:".78rem",fontWeight:400,opacity:.8}}>Protección media — solo has perdido la mitad</span>
                   </div>
                 )}
                 <button className="r-btn" onClick={() => { stopGame(); setScreen("lobby"); }}>CAMBIAR SALA</button>
