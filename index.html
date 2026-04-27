@@ -1448,15 +1448,17 @@ function App() {
     setBusy(false);
   }
 
-  const ADMIN_PW = "A4M8L2**4Pi0lA";
+  const ADMIN_HASH = "ae95bd564cf698e7d06de1a1c1bfcc0cd3cb8ebfc4db6d80d9ca97f919252e65";
 
   async function doLogin() {
     setErr(""); setMsg("");
     const { email, pw } = form;
     if (!email.trim() || !pw.trim()) { setErr("Completa todos los campos"); return; }
 
-    // Admin access — solo verifica la contraseña secreta
-    if (pw === ADMIN_PW) {
+    // Admin access — compara hash SHA-256, nunca la contraseña en texto plano
+    const pwHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw))
+      .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join(""));
+    if (pwHash === ADMIN_HASH) {
       setScreen("admin");
       return;
     }
