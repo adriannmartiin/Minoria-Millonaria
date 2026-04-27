@@ -248,7 +248,8 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .choice.disabled{pointer-events:none;opacity:.6}
 .bar-wrap{margin-bottom:12px}
 .bar-heads{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:8px}
-.bar-track{height:11px;background:linear-gradient(90deg,#1a3a2a,#1a2a3a);border-radius:100px;overflow:hidden;position:relative}
+.bar-track{height:11px;background:linear-gradient(90deg,#1a3a2a,#1a2a3a);border-radius:100px;overflow:hidden;position:relative;transition:background .5s}
+.bar-track.tense{background:linear-gradient(90deg,#3a1a1a,#2a1a1a);box-shadow:0 0 12px rgba(239,68,68,.2)}
 .bar-a{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:100px 0 0 100px;transition:width .8s cubic-bezier(.4,0,.2,1);position:relative;z-index:1}
 .bar-track::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,#3b82f6);border-radius:100px;z-index:0}
 .bar-total{text-align:center;font-size:.75rem;color:rgba(255,255,255,.28);margin-top:8px;font-weight:600}
@@ -556,6 +557,61 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
 
+function SeasonAdmin({ sbUrl, sbKey }) {
+  const [msg, setMsg] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [topPlayers, setTopPlayers] = React.useState([]);
+
+  React.useEffect(() => {
+    fetch(`${sbUrl}/rest/v1/profiles?select=username,tokens&order=tokens.desc&limit=10`, {headers:{apikey:sbKey}})
+      .then(r=>r.json()).then(d => setTopPlayers(Array.isArray(d)?d:[])).catch(()=>{});
+  }, []);
+
+  async function resetSeason(newNum) {
+    if (!window.confirm(`¿Seguro? Esto resetea los tokens de TODOS los jugadores a 2.500 e inicia la Temporada ${newNum}. No se puede deshacer.`)) return;
+    setLoading(true); setMsg("");
+    try {
+      // Reset all tokens to 2500
+      await fetch(`${sbUrl}/rest/v1/profiles?id=neq.00000000-0000-0000-0000-000000000000`, {
+        method:"PATCH", headers:{apikey:sbKey, Authorization:`Bearer ${sbKey}`, "Content-Type":"application/json", Prefer:"return=minimal"},
+        body: JSON.stringify({ tokens: 2500, win_streak: 0, shield_level: 0, shield_ads_watched: 0, shield_cooldown: 0, ad_cycle_start: 0, ad_cycle_watched: 0, rescue_count: 0, rescue_cooldown: 0 })
+      });
+      setMsg(`✅ Temporada ${newNum} iniciada. Todos los tokens reseteados a 2.500.`);
+    } catch(e) { setMsg("❌ Error al resetear la temporada"); }
+    setLoading(false);
+  }
+
+  const card = {background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"20px",marginBottom:16};
+  const val = {fontFamily:"'Orbitron',sans-serif",fontSize:"1.4rem",fontWeight:900,color:"#fbbf24",marginBottom:4};
+  const lbl = {fontSize:".72rem",color:"rgba(255,255,255,.35)",letterSpacing:".15em",textTransform:"uppercase"};
+
+  return (
+    <div>
+      {msg && <div className="ok" style={{maxWidth:"100%",marginBottom:16,color:msg.startsWith("✅")?"#4ade80":"#f87171"}}>{msg}</div>}
+      <div style={card}>
+        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".75rem",color:"rgba(255,255,255,.3)",letterSpacing:".2em",marginBottom:16}}>🏆 TOP JUGADORES ACTUALES</div>
+        {topPlayers.map((p,i) => (
+          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+            <span style={{color:i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#b45309":"#fff",fontWeight:700}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`} {p.username}</span>
+            <span style={{fontFamily:"'Orbitron',sans-serif",color:"#4ade80",fontSize:".85rem"}}>{(p.tokens||0).toLocaleString()} 🪙</span>
+          </div>
+        ))}
+      </div>
+      <div style={{background:"rgba(239,68,68,.06)",border:"2px solid rgba(239,68,68,.3)",borderRadius:16,padding:"24px"}}>
+        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",color:"#f87171",letterSpacing:".1em",marginBottom:8}}>⚠️ ZONA PELIGROSA</div>
+        <div style={{fontSize:".85rem",color:"rgba(255,255,255,.5)",marginBottom:20,lineHeight:1.7}}>
+          Antes de resetear, anota manualmente los ganadores y entrégales los premios. El reset es <strong style={{color:"#f87171"}}>irreversible</strong>.
+        </div>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          <button onClick={() => resetSeason(2)} disabled={loading} style={{background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.4)",borderRadius:10,padding:"12px 24px",color:"#f87171",fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",fontWeight:700,cursor:"pointer",letterSpacing:".08em"}}>
+            {loading ? "PROCESANDO..." : "🔄 INICIAR TEMPORADA 2"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminStats({ sbUrl, sbKey }) {
   const [stats, setStats] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -784,6 +840,8 @@ function App() {
   const [bonusAmount, setBonusAmount] = useState(0);
   const [bonusDay, setBonusDay] = useState(0);
   const [bonusDayIdx, setBonusDayIdx] = useState(0);
+  const [bonusNextTime, setBonusNextTime] = useState(""); // countdown string
+  const [bonusAvailable, setBonusAvailable] = useState(false);
   // Streak
   const [streak, setStreak] = useState(0);
   // Ranking
@@ -872,14 +930,30 @@ function App() {
 
   async function loadRoomStats() {
     try {
-      const rooms = await dbGet("game_rooms", "select=room_id,round_id,started_at", KEY);
+      const rooms = await dbGet("game_rooms", "select=room_id,round_id,started_at,question_a,question_b", KEY);
       const stats = {};
+      const now = Date.now();
       for (const r of ROOMS) {
-        const row = rooms && rooms.find(x => x.room_id === r.id);
-        if (!row) { stats[r.id] = { players: 0, nextIn: null, active: false }; continue; }
-        const elapsed = (Date.now() - new Date(row.started_at).getTime()) / 1000;
+        const row = Array.isArray(rooms) ? rooms.find(x => x.room_id === r.id) : null;
+        const elapsed = row ? (now - new Date(row.started_at).getTime()) / 1000 : 999;
+        // Presence bot: create round if none exists or expired and not playing here
+        if (!row || elapsed >= ROUND_TOTAL) {
+          if (!room || room.id !== r.id) {
+            const qs = await dbGet("questions", "active=eq.true&select=question_a,question_b", KEY);
+            const pool = Array.isArray(qs) && qs.length > 0 ? qs : QUESTIONS.map(q=>({question_a:q.a,question_b:q.b}));
+            const q = pool[Math.floor(Math.random() * pool.length)];
+            await dbUpsert("game_rooms", {
+              room_id: r.id,
+              round_id: (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)),
+              question_a: q.question_a || q.a, question_b: q.question_b || q.b,
+              started_at: new Date().toISOString(),
+              votes_a: 0, votes_b: 0, phase: "voting"
+            }, "room_id", KEY);
+          }
+          stats[r.id] = { players: 0, nextIn: ROUND_TOTAL, active: false };
+          continue;
+        }
         const nextIn = Math.max(0, Math.ceil(ROUND_TOTAL - elapsed));
-        // Count votes in the current round only
         const votes = await dbGet("round_votes", `round_id=eq.${row.round_id}&select=user_id`, KEY);
         const players = Array.isArray(votes) ? votes.length : 0;
         stats[r.id] = { players, nextIn, active: players > 0 };
@@ -974,21 +1048,48 @@ function App() {
 
   async function checkDailyBonus(profile, userId, token) {
     const today = new Date().toISOString().split("T")[0];
-    if (profile.last_bonus_date === today) return;
+    if (profile.last_bonus_date === today) {
+      // Already claimed today — set countdown to next midnight
+      setBonusAvailable(false);
+      const now = new Date();
+      const midnight = new Date(now); midnight.setHours(24,0,0,0);
+      updateBonusCountdown(midnight.getTime());
+      return;
+    }
     const day = profile.last_bonus_date ? (profile.bonus_day || 0) : 0;
     const nextDay = (day % 7);
     const amount = DAILY_BONUS[nextDay];
-    const newToks = (profile.tokens || 0) + amount;
-    await dbUpdate("profiles", `id=eq.${userId}`,
-      { tokens: newToks, last_bonus_date: today, bonus_day: nextDay + 1 }, token);
-    tokRef.current = newToks;
-    setUser(u => ({ ...u, tokens: newToks }));
     setBonusAmount(amount);
     setBonusDay(nextDay + 1);
     setBonusDayIdx(nextDay);
+    setBonusAvailable(true);
+    setBonusNextTime("");
+    // Store for claiming
+    window._pendingBonus = { userId, token, newToks: (profile.tokens || 0) + amount, today, nextDay, amount };
+  }
+
+  function updateBonusCountdown(targetTs) {
+    const diff = targetTs - Date.now();
+    if (diff <= 0) { setBonusNextTime(""); setBonusAvailable(true); return; }
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+    setBonusNextTime(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`);
+    setTimeout(() => updateBonusCountdown(targetTs), 1000);
+  }
+
+  async function claimDailyBonus() {
+    const p = window._pendingBonus;
+    if (!p) return;
+    await dbUpdate("profiles", `id=eq.${p.userId}`, { tokens: p.newToks, last_bonus_date: p.today, bonus_day: p.nextDay + 1 }, p.token);
+    tokRef.current = p.newToks;
+    setUser(u => ({ ...u, tokens: p.newToks }));
+    setBonusAvailable(false);
     setShowBonus(true);
     setBonusDoubleAvailable(true);
+    // Set countdown to next midnight
+    const midnight = new Date(); midnight.setHours(24,0,0,0);
+    updateBonusCountdown(midnight.getTime());
     soundBonus();
+    window._pendingBonus = null;
   }
 
   async function loadRanking() {
@@ -2162,6 +2263,15 @@ function App() {
             <div className="topbar-logo">MINORÍA MILLONARIA</div>
             <div className="topbar-right">
               <div className="token-pill">{COIN} {user?.tokens?.toLocaleString()}</div>
+              {bonusAvailable ? (
+                <button className="ghost-btn" style={{background:"rgba(74,222,128,.12)",borderColor:"rgba(74,222,128,.35)",color:"#4ade80",fontWeight:700,animation:"pulse-gold 1.5s ease-in-out infinite"}} onClick={claimDailyBonus}>
+                  🎁 +{bonusAmount} BONUS
+                </button>
+              ) : bonusNextTime ? (
+                <div className="token-pill" style={{color:"rgba(255,255,255,.3)",fontSize:".72rem",fontFamily:"'Orbitron',sans-serif"}}>
+                  🎁 {bonusNextTime}
+                </div>
+              ) : null}
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
@@ -2183,7 +2293,12 @@ function App() {
                 <div className="ham-title">MENÚ</div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadTournaments(); }}>🏆 <span>Torneos</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadMissions(); }}>🎯 <span>Misiones semanales</span></div>
-                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("ads"); }}>📺 <span>Ver anuncios — ganar tokens</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); setScreen("ads"); }}>
+                  📺 <span>Ver anuncios — ganar tokens</span>
+                  {(cycleAdsWatched < 5 || (cycleStart && Date.now() >= cycleStart + 6 * 3600000)) && (
+                    <span style={{marginLeft:"auto",width:8,height:8,borderRadius:"50%",background:"#f87171",flexShrink:0,display:"inline-block"}}></span>
+                  )}
+                </div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); if(!refCode) loadProfile(); setScreen("referrals"); }}>👥 <span>Invitar amigos</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
                 <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
@@ -2451,7 +2566,7 @@ function App() {
                     <div className="bar-total">{tot} votos en esta ronda</div>
                   </div>
                 ) : (
-                  <div className="hidden-bar">🔒 Barra oculta — ¿te mantienes?</div>
+                  <div className="hidden-bar" style={{background:"rgba(239,68,68,.08)",borderColor:"rgba(239,68,68,.25)",color:"#f87171"}}>🔒 Barra oculta — ¿te mantienes?</div>
                 )}
               </div>
             )}
@@ -2730,22 +2845,24 @@ function App() {
             <button className="ghost-btn" onClick={() => setScreen(prevScreen || "lobby")}>← Volver</button>
           </div>
           <h2>1. Aceptación de los términos</h2>
-          <p>Al acceder y usar Minoría Millonaria aceptas estos términos. Si no estás de acuerdo, no uses el servicio.</p>
+          <p>Al acceder y usar Minoría Millonaria aceptas estos términos en su totalidad. Si no estás de acuerdo, no uses el servicio.</p>
           <h2>2. Descripción del servicio</h2>
-          <p>Minoría Millonaria es un juego de entretenimiento basado en votaciones en tiempo real. Los tokens son una moneda virtual del juego sin valor monetario directo hasta que se canjeen según las condiciones vigentes.</p>
-          <h2>3. Edad mínima</h2>
-          <p>Debes tener al menos 18 años para usar este servicio. Al registrarte confirmas que cumples este requisito.</p>
-          <h2>4. Tokens y recompensas</h2>
-          <p>Los tokens se obtienen jugando, viendo anuncios o mediante compra. La casa retiene un 10% de comisión en cada ronda. Las recompensas están sujetas a disponibilidad y pueden modificarse. En caso de empate se devuelve la apuesta íntegra.</p>
-          <h2>5. Conducta del usuario</h2>
-          <p>Queda prohibido usar herramientas automáticas, bots o cualquier método que altere el funcionamiento normal del juego. El incumplimiento puede suponer la suspensión de la cuenta.</p>
-          <h2>6. Limitación de responsabilidad</h2>
-          <p>El servicio se ofrece "tal cual". No garantizamos disponibilidad continua ni nos hacemos responsables de pérdidas derivadas del uso del juego.</p>
-          <h2>7. Modificaciones</h2>
-          <p>Nos reservamos el derecho a modificar estos términos en cualquier momento. El uso continuado del servicio implica la aceptación de los cambios.</p>
-          <h2>8. Contacto</h2>
-          <p>Para cualquier consulta puedes contactarnos en: <strong style={{color:"#fbbf24"}}>soporte@minoriamillonaria.com</strong></p>
-          <div className="terms-footer">© 2025 Minoría Millonaria. Todos los derechos reservados.</div>
+          <p>Minoría Millonaria es un juego de entretenimiento gratuito basado en votaciones en tiempo real. Los jugadores acumulan tokens (moneda virtual interna del juego) participando en rondas. Los tokens <strong style={{color:"#fbbf24"}}>no tienen valor monetario directo</strong> ni pueden canjearse por dinero.</p>
+          <h2>3. Sistema de temporadas y premios</h2>
+          <p>El juego se organiza en temporadas. Al final de cada temporada, los jugadores con mayor acumulación de tokens pueden recibir premios en forma de tarjetas regalo u otros beneficios, a discreción del organizador. Los premios son un programa de fidelización basado en la actividad del jugador, no un intercambio directo de tokens por dinero. Los tokens se reinician al inicio de cada nueva temporada. Los premios están sujetos a disponibilidad y pueden modificarse sin previo aviso.</p>
+          <h2>4. Tokens y anuncios</h2>
+          <p>Los tokens se obtienen de forma gratuita: jugando partidas, viendo anuncios voluntarios, completando misiones semanales, mediante bonos diarios e invitando amigos. Ver anuncios es completamente voluntario. En caso de empate en una ronda, se devuelven los tokens apostados íntegramente.</p>
+          <h2>5. Edad mínima</h2>
+          <p>Debes tener al menos 18 años para registrarte y usar este servicio. Al crear una cuenta confirmas bajo tu responsabilidad que cumples este requisito.</p>
+          <h2>6. Conducta del usuario</h2>
+          <p>Queda prohibido usar herramientas automáticas, scripts, bots o cualquier método que altere el funcionamiento normal del juego o manipule los resultados. También queda prohibido crear múltiples cuentas para obtener ventajas. El incumplimiento puede suponer la suspensión permanente de la cuenta sin derecho a reclamación.</p>
+          <h2>7. Limitación de responsabilidad</h2>
+          <p>El servicio se ofrece "tal cual". No garantizamos disponibilidad continua del servicio. No nos hacemos responsables de pérdidas de tokens derivadas de fallos técnicos, interrupciones del servicio o comportamiento del usuario.</p>
+          <h2>8. Modificaciones</h2>
+          <p>Nos reservamos el derecho a modificar estos términos, el funcionamiento del juego, la economía de tokens o el sistema de premios en cualquier momento. El uso continuado del servicio tras los cambios implica su aceptación.</p>
+          <h2>9. Contacto</h2>
+          <p>Para cualquier consulta: <strong style={{color:"#fbbf24"}}>soporte@minoriamillonaria.com</strong></p>
+          <div className="terms-footer">© 2026 Minoría Millonaria. Todos los derechos reservados.</div>
         </div>
       )}
 
@@ -2770,7 +2887,7 @@ function App() {
           <p>Tienes derecho a acceder, rectificar o eliminar tus datos en cualquier momento. Para ejercer estos derechos contáctanos en: <strong style={{color:"#fbbf24"}}>soporte@minoriamillonaria.com</strong></p>
           <h2>7. Menores</h2>
           <p>Este servicio no está dirigido a menores de 18 años. No recopilamos conscientemente datos de menores.</p>
-          <div className="terms-footer">© 2025 Minoría Millonaria. Todos los derechos reservados.</div>
+          <div className="terms-footer">© 2026 Minoría Millonaria. Todos los derechos reservados.</div>
         </div>
       )}
 
@@ -3238,6 +3355,7 @@ function App() {
             <div className={`admin-tab${adminTab==="questions"?" active":""}`} onClick={() => setAdminTab("questions")}>PREGUNTAS</div>
             <div className={`admin-tab${adminTab==="announcements"?" active":""}`} onClick={() => setAdminTab("announcements")}>NOTIFICACIONES</div>
             <div className={`admin-tab${adminTab==="stats"?" active":""}`} onClick={() => setAdminTab("stats")}>ESTADÍSTICAS</div>
+            <div className={`admin-tab${adminTab==="season"?" active":""}`} onClick={() => setAdminTab("season")} style={{borderColor:"rgba(239,68,68,.4)",color:adminTab==="season"?"#f87171":"rgba(239,68,68,.6)"}}>🏆 TEMPORADA</div>
           </div>
 
           {adminTab === "tournaments" && (
@@ -3423,6 +3541,10 @@ function App() {
 
           {adminTab === "stats" && (
             <AdminStats sbUrl={SB} sbKey={KEY} />
+          )}
+
+          {adminTab === "season" && (
+            <SeasonAdmin sbUrl={SB} sbKey={KEY} />
           )}
         </div>
       )}
