@@ -239,7 +239,7 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .timer-ring svg{transform:rotate(-90deg)}
 @keyframes pulse-red{0%,100%{transform:scale(1);filter:drop-shadow(0 0 4px #ef4444)}50%{transform:scale(1.1);filter:drop-shadow(0 0 12px #ef4444)}}
 @keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.4)}50%{box-shadow:0 0 0 6px rgba(251,191,36,0)}}
-@keyframes tok-pop{0%{transform:scale(1)}40%{transform:scale(1.35)}70%{transform:scale(.95)}100%{transform:scale(1)}}
+@keyframes tok-pop{0%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(.95)}100%{transform:scale(1)}}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.45rem;font-weight:900;color:#fff}
 .question{font-size:clamp(1.1rem,3vw,1.5rem);font-weight:700;text-align:center;color:#fff;margin-bottom:28px;line-height:1.3}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
@@ -995,10 +995,6 @@ function App() {
     prevTokRef.current = curr;
   }, [user?.tokens]);
 
-  // Global tick for real-time countdowns
-  const [tick, setTick] = useState(0);
-  useEffect(() => { const t = setInterval(() => setTick(n => n+1), 1000); return () => clearInterval(t); }, []);
-
   // Season countdown
   async function saveAdState(updates) {
     const uid = userIdRef.current;
@@ -1155,7 +1151,6 @@ function App() {
     setHistory(Array.isArray(hist) ? hist : []);
     const prof = await dbGet("profiles", `id=eq.${userIdRef.current}`, tokenRef.current);
     if (prof && prof[0]) setRefCode(prof[0].referral_code || "");
-    if (!myRank) loadTopPlayers();
     setScreen("profile");
   }
 
@@ -1780,7 +1775,6 @@ function App() {
 
   // ── RESCUE AD (0 → 4000) ──────────────────────────────────────────────────
   function rescueCooldownLeft() {
-    const _t = tick; // tick dependency — updates every second
     const diff = rescueCooldown - Date.now();
     if (diff <= 0) return "";
     const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
@@ -1811,13 +1805,12 @@ function App() {
   // ── CYCLE ADS (5 ads per 6h) ───────────────────────────────────────────────
   const CYCLE_REWARDS = [50, 50, 50, 50, 200];
   function cycleTimeLeft() {
-    const _t = tick; // tick dependency
     if (!cycleStart || cycleAdsWatched < 5) return "";
     const end = cycleStart + 6 * 3600000;
     const diff = end - Date.now();
     if (diff <= 0) return "";
     const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
-    return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
   function cycleAvailable() {
     if (cycleAdsWatched < 5) return true;
@@ -1895,12 +1888,11 @@ function App() {
   }
 
   function shieldCooldownLeft() {
-    const _t = tick; // tick dependency
     const diff = shieldCooldown - Date.now();
     if (diff <= 0) return "";
     const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
-    return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
 
   function resetShieldAfterRound(won) {
@@ -2635,7 +2627,7 @@ function App() {
                 {resultPhrase && <div className="result-phrase">"{resultPhrase}"</div>}
                 {result.win && shieldLevel === 0 && shieldCooldown <= Date.now() && (
                   <div style={{fontSize:".76rem",color:"#60a5fa",textAlign:"center",marginTop:8,padding:"8px 14px",background:"rgba(96,165,250,.06)",borderRadius:10,border:"1px solid rgba(96,165,250,.15)"}}>
-                    🛡️ Sin escudo — actívalo en el lobby antes de la siguiente ronda
+                    🛡️ Sin escudo activo — puedes activarlo en el lobby antes de la siguiente ronda
                   </div>
                 )}
                 {!result.win && !result.tie && result.shieldUsed === 0 && shieldCooldown <= Date.now() && (
@@ -2716,10 +2708,7 @@ function App() {
               <div className="stat-val" style={{color:"#f97316"}}>{streak} 🔥</div>
               <div className="stat-lbl">Racha actual</div>
             </div>
-            <div className="stat-card">
-              <div className="stat-val" style={{color:"#fbbf24"}}>{myRank ? `#${myRank}` : "—"}</div>
-              <div className="stat-lbl">Posición temporada</div>
-            </div>
+          </div>
 
           {/* Token chart */}
           {history.length > 1 && (() => {
