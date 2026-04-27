@@ -1125,6 +1125,14 @@ function App() {
     prevTokRef.current = curr;
   }, [user?.tokens]);
 
+  // Reload daily question when entering lobby
+  useEffect(() => {
+    if (screen === "lobby" && user && !dailyQ) {
+      const prof = { daily_q_date: "" };
+      loadDailyQ(prof.daily_q_date);
+    }
+  }, [screen]);
+
   // Season countdown
   async function saveAdState(updates) {
     const uid = userIdRef.current;
@@ -1158,37 +1166,25 @@ function App() {
   async function loadDailyQ(profileDailyDate) {
     try {
       const today = new Date().toISOString().split("T")[0];
-      // Use tokenRef if available, fall back to KEY
       const tok = tokenRef.current || KEY;
-      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date,daily_reward`, tok);
-      if (!qs || !qs[0]) {
-        // Try without date filter in case date format differs
-        const qs2 = await dbGet("questions", `is_daily=eq.true&select=id,question_a,question_b,daily_date,daily_reward&order=id.desc&limit=1`, tok);
-        if (!qs2 || !qs2[0] || qs2[0].daily_date !== today) return;
-        qs2[0].reward = qs2[0].daily_reward || 100;
-        setDailyQ(qs2[0]);
-        if (profileDailyDate === today) {
-          setDailyVoted(true);
-          const [va, vb] = await Promise.all([
-            dbGet("round_votes", `round_id=eq.daily_${qs2[0].id}_a&select=user_id`, tok),
-            dbGet("round_votes", `round_id=eq.daily_${qs2[0].id}_b&select=user_id`, tok),
-          ]);
-          setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward: qs2[0].reward });
-        }
-        return;
-      }
+      const res = await fetch(`${SB}/rest/v1/questions?is_daily=eq.true&order=id.desc&limit=1&select=id,question_a,question_b,daily_date,daily_reward`, {
+        headers: { apikey: KEY, Authorization: `Bearer ${tok}` }
+      });
+      const qs = await res.json();
+      if (!Array.isArray(qs) || !qs[0]) return;
       const q = qs[0];
+      if (q.daily_date !== today) return;
       q.reward = q.daily_reward || 100;
       setDailyQ(q);
       if (profileDailyDate === today) {
         setDailyVoted(true);
-        const [va, vb] = await Promise.all([
-          dbGet("round_votes", `round_id=eq.daily_${q.id}_a&select=user_id`, tok),
-          dbGet("round_votes", `round_id=eq.daily_${q.id}_b&select=user_id`, tok),
+        const [ra, rb] = await Promise.all([
+          fetch(`${SB}/rest/v1/round_votes?round_id=eq.daily_${q.id}_a&select=user_id`, {headers:{apikey:KEY,Authorization:`Bearer ${tok}`}}).then(r=>r.json()),
+          fetch(`${SB}/rest/v1/round_votes?round_id=eq.daily_${q.id}_b&select=user_id`, {headers:{apikey:KEY,Authorization:`Bearer ${tok}`}}).then(r=>r.json()),
         ]);
-        setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward: q.reward });
+        setDailyResult({ cA: Array.isArray(ra)?ra.length:0, cB: Array.isArray(rb)?rb.length:0, reward: q.reward });
       }
-    } catch(e) { console.error("loadDailyQ error:", e); }
+    } catch(e) { console.error("loadDailyQ:", e); }
   }
 
   async function submitDailyVote(option) {
