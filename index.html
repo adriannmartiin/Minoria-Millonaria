@@ -1006,7 +1006,6 @@ function App() {
 
   // Token animation
   const [tokAnimKey, setTokAnimKey] = useState(0);
-  const prevTokDisplay = useRef(0);
 
   // Global 1-second tick for all real-time countdowns
   const [tick, setTick] = useState(0);
@@ -1796,7 +1795,7 @@ function App() {
 
   // ── RESCUE AD (0 → 4000) ──────────────────────────────────────────────────
   function rescueCooldownLeft() {
-    void tick; // reactive dependency
+    tick; // reactive
     const diff = rescueCooldown - Date.now();
     if (diff <= 0) return "";
     const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
@@ -1827,7 +1826,7 @@ function App() {
   // ── CYCLE ADS (5 ads per 6h) ───────────────────────────────────────────────
   const CYCLE_REWARDS = [50, 50, 50, 50, 200];
   function cycleTimeLeft() {
-    void tick; // reactive dependency
+    tick; // reactive
     if (!cycleStart || cycleAdsWatched < 5) return "";
     const end = cycleStart + 6 * 3600000;
     const diff = end - Date.now();
@@ -1911,7 +1910,7 @@ function App() {
   }
 
   function shieldCooldownLeft() {
-    void tick;
+    tick;
     const diff = shieldCooldown - Date.now();
     if (diff <= 0) return "";
     const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000);
