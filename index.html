@@ -5,17 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Minoría Millonaria — La minoría siempre gana</title>
 <link rel="icon" type="image/png" href="/coin.png" />
-<meta property="og:title" content="Minoría Millonaria" />
-<meta property="og:description" content="El juego donde la minoría siempre gana. ¿Eres capaz de pensar diferente?" />
+<meta name="description" content="El juego de votaciones donde la minoría siempre gana. ¿Eres capaz de pensar diferente? Juega gratis y demuéstralo." />
+<meta property="og:title" content="Minoría Millonaria — ¿Puedes pensar diferente?" />
+<meta property="og:description" content="El juego donde la minoría siempre gana. ¿Pizza o hamburguesa? La respuesta menos votada se lleva el premio. Juega gratis." />
 <meta property="og:image" content="https://minoria-millonaria.vercel.app/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:url" content="https://minoria-millonaria.vercel.app" />
 <meta property="og:type" content="website" />
+<meta property="og:site_name" content="Minoría Millonaria" />
+<meta property="og:locale" content="es_ES" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Minoría Millonaria" />
-<meta name="twitter:description" content="El juego donde la minoría siempre gana." />
+<meta name="twitter:title" content="Minoría Millonaria — ¿Puedes pensar diferente?" />
+<meta name="twitter:description" content="El juego donde la minoría siempre gana. Juega gratis." />
 <meta name="twitter:image" content="https://minoria-millonaria.vercel.app/og-image.png" />
+<script defer src="https://va.vercel-scripts.com/v1/script.js" data-endpoint="/va"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -558,6 +562,55 @@ body,#root{font-family:'Rajdhani',sans-serif;color:#e2e8f0}
 .empty-hist{text-align:center;padding:24px;color:rgba(255,255,255,.2);font-size:.85rem;letter-spacing:.1em}
 `;
 
+function DailyQAdmin({ sbUrl, sbKey }) {
+  const [qa, setQa] = React.useState("");
+  const [qb, setQb] = React.useState("");
+  const [date, setDate] = React.useState(new Date().toISOString().split("T")[0]);
+  const [msg, setMsg] = React.useState("");
+  const [current, setCurrent] = React.useState(null);
+
+  React.useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date`, {headers:{apikey:sbKey}})
+      .then(r=>r.json()).then(d => { if(Array.isArray(d)&&d[0]) setCurrent(d[0]); }).catch(()=>{});
+  }, []);
+
+  async function saveDailyQ() {
+    if (!qa.trim() || !qb.trim()) { setMsg("❌ Completa las dos opciones"); return; }
+    // Clear previous daily
+    await fetch(`${sbUrl}/rest/v1/questions?is_daily=eq.true`, {
+      method:"PATCH", headers:{apikey:sbKey, Authorization:`Bearer ${sbKey}`, "Content-Type":"application/json", Prefer:"return=minimal"},
+      body: JSON.stringify({ is_daily: false, daily_date: "" })
+    });
+    // Insert new daily question
+    await fetch(`${sbUrl}/rest/v1/questions`, {
+      method:"POST", headers:{apikey:sbKey, Authorization:`Bearer ${sbKey}`, "Content-Type":"application/json", Prefer:"return=minimal"},
+      body: JSON.stringify({ question_a: qa, question_b: qb, active: true, is_daily: true, daily_date: date })
+    });
+    setMsg(`✅ Pregunta del día guardada para ${date}`);
+    setCurrent({ question_a: qa, question_b: qb, daily_date: date });
+    setQa(""); setQb("");
+  }
+
+  const inp = {background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"10px 14px",color:"#fff",fontSize:".85rem",width:"100%",outline:"none",fontFamily:"inherit"};
+  return (
+    <div>
+      {current && <div style={{fontSize:".8rem",color:"rgba(255,255,255,.4)",marginBottom:12}}>Activa hoy ({current.daily_date}): <strong style={{color:"#60a5fa"}}>{current.question_a}</strong> vs <strong style={{color:"#4ade80"}}>{current.question_b}</strong></div>}
+      {msg && <div style={{fontSize:".78rem",color:msg.startsWith("✅")?"#4ade80":"#f87171",marginBottom:10}}>{msg}</div>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <input style={inp} placeholder="Opción A (ej: 🐶 Perros)" value={qa} onChange={e=>setQa(e.target.value)} />
+        <input style={inp} placeholder="Opción B (ej: 🐱 Gatos)" value={qb} onChange={e=>setQb(e.target.value)} />
+      </div>
+      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+        <input type="date" style={{...inp,width:"auto"}} value={date} onChange={e=>setDate(e.target.value)} />
+        <button onClick={saveDailyQ} style={{background:"rgba(96,165,250,.15)",border:"1px solid rgba(96,165,250,.3)",borderRadius:8,padding:"10px 20px",color:"#60a5fa",fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+          GUARDAR PREGUNTA DEL DÍA
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SeasonAdmin({ sbUrl, sbKey }) {
   const [msg, setMsg] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -1024,6 +1077,57 @@ function App() {
     return () => clearInterval(t);
   }, []);
 
+  // ── DAILY QUESTION ────────────────────────────────────────────────────────
+  async function loadDailyQ(profileDailyDate) {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const qs = await dbGet("questions", `is_daily=eq.true&daily_date=eq.${today}&select=id,question_a,question_b,daily_date`, KEY);
+      if (!qs || !qs[0]) return;
+      setDailyQ(qs[0]);
+      if (profileDailyDate === today) {
+        setDailyVoted(true);
+      }
+    } catch(e) {}
+  }
+
+  async function submitDailyVote(option) {
+    if (dailyVoted || !dailyQ) return;
+    const today = new Date().toISOString().split("T")[0];
+    setDailyVote(option);
+    // Count total votes to determine minority
+    const [votesA, votesB] = await Promise.all([
+      dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_a&select=user_id`, KEY),
+      dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_b&select=user_id`, KEY),
+    ]);
+    const cA = (Array.isArray(votesA) ? votesA.length : 0) + (option === "a" ? 1 : 0);
+    const cB = (Array.isArray(votesB) ? votesB.length : 0) + (option === "b" ? 1 : 0);
+    // Register vote
+    await dbInsertRaw("round_votes", { round_id: `daily_${dailyQ.id}_${option}`, user_id: userIdRef.current, vote: option }, tokenRef.current);
+    // Give 100 tokens
+    await saveTok(tokRef.current + 100);
+    // Mark as voted today
+    await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { daily_q_date: today }, tokenRef.current);
+    setDailyVoted(true);
+    const minority = cA < cB ? "a" : "b";
+    setDailyResult({ minority, cA, cB, won: option === minority });
+    setDailyDoubleAvail(true);
+  }
+
+  function watchDailyDoubleAd() {
+    setDailyDoubleAdPlaying(true); setDailyDoubleAdCount(5);
+    let t = 5;
+    dailyDoubleTimer.current = setInterval(() => {
+      t--; setDailyDoubleAdCount(t);
+      if (t <= 0) {
+        clearInterval(dailyDoubleTimer.current);
+        setDailyDoubleAdPlaying(false);
+        setDailyDoubleAvail(false);
+        saveTok(tokRef.current + 100);
+        dbInsertRaw("ad_views", { user_id: userIdRef.current }, KEY);
+      }
+    }, 1000);
+  }
+
   async function loadTopPlayers() {
     try {
       const data = await dbGet("profiles", "select=id,username,tokens&order=tokens.desc&limit=50", KEY);
@@ -1393,6 +1497,7 @@ function App() {
           setShieldAdsWatched(p.shield_ads_watched || 0);
         }
         checkDailyBonus(p, data.user.id, data.access_token);
+        loadDailyQ(p.daily_q_date || "");
         setScreen("lobby");
       } else {
         // No profile yet — check for pending registration data
@@ -1732,6 +1837,15 @@ function App() {
   const [shieldAdPlaying, setShieldAdPlaying] = useState(false);
   const [shieldAdCountdown, setShieldAdCountdown] = useState(0);
   const [showShieldInfo, setShowShieldInfo] = useState(false);
+  // Daily question
+  const [dailyQ, setDailyQ] = useState(null);
+  const [dailyVoted, setDailyVoted] = useState(false);
+  const [dailyVote, setDailyVote] = useState(null);
+  const [dailyResult, setDailyResult] = useState(null);
+  const [dailyDoubleAvail, setDailyDoubleAvail] = useState(false);
+  const [dailyDoubleAdPlaying, setDailyDoubleAdPlaying] = useState(false);
+  const [dailyDoubleAdCount, setDailyDoubleAdCount] = useState(0);
+  const dailyDoubleTimer = useRef(null);
   const shieldAdTimer = useRef(null);
   // Bonus double
   const [bonusDoubleAvailable, setBonusDoubleAvailable] = useState(false);
@@ -2458,6 +2572,46 @@ function App() {
               </div>
             );
           })()}
+          {/* Daily Question */}
+          {dailyQ && (
+            <div style={{maxWidth:1100,margin:"0 auto 20px",background:"rgba(96,165,250,.04)",border:"1px solid rgba(96,165,250,.15)",borderRadius:16,padding:"20px 24px"}}>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".65rem",color:"rgba(96,165,250,.6)",letterSpacing:".2em",marginBottom:10}}>📅 PREGUNTA DEL DÍA · +100 🪙 GRATIS</div>
+              <div style={{fontSize:"1rem",fontWeight:700,color:"#fff",marginBottom:16,textAlign:"center"}}>{dailyQ.question_a} <span style={{color:"rgba(255,255,255,.3)"}}>vs</span> {dailyQ.question_b}</div>
+              {!dailyVoted ? (
+                <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+                  <button onClick={() => submitDailyVote("a")} style={{flex:1,minWidth:120,maxWidth:200,padding:"12px",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.3)",borderRadius:12,color:"#4ade80",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>
+                    {dailyQ.question_a}
+                  </button>
+                  <button onClick={() => submitDailyVote("b")} style={{flex:1,minWidth:120,maxWidth:200,padding:"12px",background:"rgba(96,165,250,.1)",border:"1px solid rgba(96,165,250,.3)",borderRadius:12,color:"#60a5fa",fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>
+                    {dailyQ.question_b}
+                  </button>
+                </div>
+              ) : dailyResult ? (
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:".85rem",color:"rgba(255,255,255,.5)",marginBottom:8}}>
+                    {dailyQ.question_a}: <strong style={{color:"#4ade80"}}>{dailyResult.cA}</strong> · {dailyQ.question_b}: <strong style={{color:"#60a5fa"}}>{dailyResult.cB}</strong>
+                  </div>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".8rem",fontWeight:900,marginBottom:12,color: dailyResult.won ? "#4ade80" : "#f87171"}}>
+                    {dailyResult.won ? "🎉 ¡Estabas en minoría! +100 🪙" : `✅ Respondido · Minoría: ${dailyResult.minority === "a" ? dailyQ.question_a : dailyQ.question_b} · +100 🪙`}
+                  </div>
+                  {dailyDoubleAvail && !dailyDoubleAdPlaying && (
+                    <button onClick={watchDailyDoubleAd} style={{background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.25)",borderRadius:10,padding:"10px 20px",color:"#fbbf24",fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",fontWeight:700,cursor:"pointer"}}>
+                      📺 Ver anuncio → +100 🪙 extra
+                    </button>
+                  )}
+                  {dailyDoubleAdPlaying && (
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.2rem",fontWeight:900,color:"#fbbf24"}}>{dailyDoubleAdCount}s</div>
+                  )}
+                  {!dailyDoubleAvail && !dailyDoubleAdPlaying && dailyResult && (
+                    <div style={{fontSize:".72rem",color:"#4ade80"}}>✅ ¡Bonus duplicado!</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{textAlign:"center",fontSize:".82rem",color:"rgba(255,255,255,.35)"}}>✅ Ya respondiste hoy — vuelve mañana</div>
+              )}
+            </div>
+          )}
+
           <div className="rooms">
             {ROOMS.map(r => {
               const locked = (user?.tokens || 0) < r.cost;
@@ -2496,13 +2650,18 @@ function App() {
           </div>
 
           <div className="footer-links" style={{marginTop:24,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-            <div style={{display:"flex",gap:24}}>
+            <div style={{display:"flex",gap:24,flexWrap:"wrap",justifyContent:"center"}}>
               <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("terms"); }}>Términos y Condiciones</span>
               <span className="footer-link" onClick={() => { setPrevScreen("lobby"); setScreen("privacy"); }}>Política de Privacidad</span>
             </div>
-            <a href="https://www.juegoseguro.es" target="_blank" rel="noopener noreferrer" style={{fontSize:".72rem",color:"rgba(255,255,255,.15)",textDecoration:"none",transition:"color .2s"}} onMouseOver={e=>e.target.style.color="rgba(255,255,255,.35)"} onMouseOut={e=>e.target.style.color="rgba(255,255,255,.15)"}>
-              🛡️ Juego responsable — juegoseguro.es
-            </a>
+            <div style={{fontSize:".7rem",color:"rgba(255,255,255,.12)",textAlign:"center",maxWidth:500,lineHeight:1.6}}>
+              🛡️ Este juego puede crear hábitos. Juega de forma responsable.<br/>
+              Si el juego supone un problema, llama a la{" "}
+              <a href="tel:900200225" style={{color:"rgba(255,255,255,.25)",textDecoration:"none"}}>Línea de Atención al Jugador: 900 200 225</a>
+              {" "}·{" "}
+              <a href="https://www.juegoseguro.es" target="_blank" rel="noopener noreferrer" style={{color:"rgba(255,255,255,.25)",textDecoration:"none"}}>juegoseguro.es</a>
+            </div>
+            <div style={{fontSize:".65rem",color:"rgba(255,255,255,.08)"}}>© 2026 Minoría Millonaria · Solo mayores de 18 años</div>
           </div>
 
           {/* Unlock toast */}
@@ -2791,6 +2950,27 @@ function App() {
 
           {/* Logout */}
           <button className="logout-btn" onClick={doLogout}>CERRAR SESIÓN</button>
+
+          {/* RGPD — Delete account */}
+          <div style={{marginTop:32,padding:"20px",background:"rgba(239,68,68,.04)",border:"1px solid rgba(239,68,68,.15)",borderRadius:14}}>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".7rem",color:"rgba(239,68,68,.6)",letterSpacing:".15em",marginBottom:8}}>⚠️ ZONA DE PELIGRO</div>
+            <div style={{fontSize:".82rem",color:"rgba(255,255,255,.35)",marginBottom:14,lineHeight:1.6}}>
+              Puedes eliminar tu cuenta y todos tus datos en cualquier momento (derecho RGPD). Esta acción es irreversible — se borrarán tu nombre, tokens, historial y estadísticas.
+            </div>
+            <button onClick={async () => {
+              if (!window.confirm("¿Seguro que quieres eliminar tu cuenta? Esta acción no se puede deshacer.")) return;
+              if (!window.confirm("Última confirmación: se borrarán TODOS tus datos permanentemente.")) return;
+              try {
+                await fetch(`${SB}/rest/v1/match_history?user_id=eq.${userIdRef.current}`, { method:"DELETE", headers:{apikey:KEY, Authorization:`Bearer ${tokenRef.current}`, Prefer:"return=minimal"} });
+                await fetch(`${SB}/rest/v1/round_votes?user_id=eq.${userIdRef.current}`, { method:"DELETE", headers:{apikey:KEY, Authorization:`Bearer ${tokenRef.current}`, Prefer:"return=minimal"} });
+                await fetch(`${SB}/rest/v1/profiles?id=eq.${userIdRef.current}`, { method:"DELETE", headers:{apikey:KEY, Authorization:`Bearer ${tokenRef.current}`, Prefer:"return=minimal"} });
+                await fetch(`${SB}/auth/v1/user`, { method:"DELETE", headers:{apikey:KEY, Authorization:`Bearer ${tokenRef.current}`} });
+              } catch(e) {}
+              doLogout();
+            }} style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:10,padding:"10px 20px",color:"#f87171",fontFamily:"'Orbitron',sans-serif",fontSize:".68rem",fontWeight:700,cursor:"pointer",letterSpacing:".08em"}}>
+              🗑️ ELIMINAR MI CUENTA Y DATOS
+            </button>
+          </div>
         </div>
       )}
       {/* ── NO TOKENS ── */}
@@ -3436,6 +3616,12 @@ function App() {
           {adminTab === "questions" && (
             <div>
               {adminQMsg && <div className="ok" style={{maxWidth:"100%",marginBottom:16}}>{adminQMsg}</div>}
+
+              {/* Daily question configurator */}
+              <div style={{background:"rgba(96,165,250,.06)",border:"1px solid rgba(96,165,250,.2)",borderRadius:14,padding:"20px",marginBottom:20}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".72rem",color:"rgba(96,165,250,.8)",letterSpacing:".15em",marginBottom:14}}>📅 PREGUNTA DEL DÍA</div>
+                <DailyQAdmin sbUrl={SB} sbKey={KEY} />
+              </div>
               <div className="admin-form">
                 <div className="admin-form-title">AÑADIR NUEVA PREGUNTA</div>
                 <div className="admin-grid">
