@@ -39,6 +39,12 @@ const SB  = "https://gpwqqbudzxtnjnloqgte.supabase.co";
 const KEY = "sb_publishable_xzFCKnAF86_LeufT6AJBsg_EfU0rvtl";
 
 async function authCall(path, body) {
+async function authGet(path, token) {
+  const r = await fetch(`${SB}/auth/v1/${path}`, {
+    headers: { apikey: KEY, Authorization: `Bearer ${token}` }
+  });
+  return r.json();
+}
   const r = await fetch(`${SB}/auth/v1/${path}`, {
     method: "POST",
     headers: { apikey: KEY, "Content-Type": "application/json" },
@@ -1153,6 +1159,8 @@ function App() {
     } catch(e) {}
   }
 
+  const rankingTimer = useRef(null);
+
   useEffect(() => {
     if (screen === "lobby") {
       loadRoomStats();
@@ -1160,10 +1168,11 @@ function App() {
       checkTournamentBanner();
       loadTopPlayers();
       roomStatsRef.current = setInterval(loadRoomStats, 5000);
-      // Phrases rotation
+      rankingTimer.current = setInterval(loadTopPlayers, 30000);
       phraseTimer.current = setInterval(() => setPhraseIdx(i => (i + 1) % WIN_PHRASES.length), 5000);
     } else {
       clearInterval(roomStatsRef.current);
+      clearInterval(rankingTimer.current);
       clearInterval(phraseTimer.current);
     }
     return () => { clearInterval(roomStatsRef.current); clearInterval(phraseTimer.current); };
@@ -1409,10 +1418,11 @@ function App() {
   }
 
   async function loadProfile() {
-    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&order=created_at.desc&limit=20`, tokenRef.current);
+    const hist = await dbGet("match_history", `user_id=eq.${userIdRef.current}&order=created_at.desc&limit=20&select=result,delta,tokens_after,room_id,question_a,question_b,minority,vote,votes_a,votes_b,created_at`, tokenRef.current);
     setHistory(Array.isArray(hist) ? hist : []);
     const prof = await dbGet("profiles", `id=eq.${userIdRef.current}`, tokenRef.current);
     if (prof && prof[0]) setRefCode(prof[0].referral_code || "");
+    if (!myRank) loadTopPlayers();
     setScreen("profile");
   }
 
@@ -1430,16 +1440,59 @@ function App() {
   const [resetBusy, setResetBusy] = useState(false);
 
   useEffect(() => {
-    // Check for password reset token in URL hash
     const hash = window.location.hash;
     if (hash && hash.includes("access_token")) {
       const params = new URLSearchParams(hash.replace("#", "?"));
       const token = params.get("access_token");
       const type = params.get("type");
+      window.history.replaceState({}, document.title, window.location.pathname);
       if (token && type === "recovery") {
         setResetToken(token);
         setScreen("reset");
-        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (token && (type === "signup" || type === "magiclink")) {
+        // Email confirmed — auto login with this token
+        tokenRef.current = token;
+        (async () => {
+          try {
+            const userData = await authGet("user", token);
+            if (userData && userData.id) {
+              userIdRef.current = userData.id;
+              const profiles = await dbGet("profiles", `id=eq.${userData.id}`, token);
+              if (profiles && profiles[0]) {
+                const p = profiles[0];
+                tokRef.current = p.tokens;
+                setEmail(userData.email || "");
+                setUser({ name: p.username, tokens: p.tokens });
+                setStreak(p.win_streak || 0);
+                const today = new Date().toISOString().split("T")[0];
+                if (p.rescue_date === today) { setRescueCount(p.rescue_count||0); setRescueCooldown(p.rescue_cooldown||0); }
+                if (p.ad_cycle_start && Date.now() < p.ad_cycle_start + 6*3600000) { setCycleStart(p.ad_cycle_start); setCycleAdsWatched(p.ad_cycle_watched||0); }
+                if (p.shield_cooldown && p.shield_cooldown > Date.now()) setShieldCooldown(p.shield_cooldown);
+                if (p.shield_level > 0) { setShieldLevel(p.shield_level); shieldLevelRef.current = p.shield_level; setShieldAdsWatched(p.shield_ads_watched||0); }
+                checkDailyBonus(p, userData.id, token);
+                setTimeout(() => loadDailyQ(p.daily_q_date||""), 300);
+                setShowWelcome(true);
+                setScreen("lobby");
+              } else {
+                // Profile doesn't exist yet — check pending
+                const pending = localStorage.getItem("mm_pending_profile");
+                if (pending) {
+                  try {
+                    const pd = JSON.parse(pending);
+                    await dbInsertRaw("profiles", { id: userData.id, username: pd.username, tokens: pd.tokens }, token);
+                    tokRef.current = pd.tokens;
+                    setEmail(userData.email||"");
+                    setUser({ name: pd.username, tokens: pd.tokens });
+                    if (pd.refCode) { setRegRefCode(pd.refCode); }
+                    localStorage.removeItem("mm_pending_profile");
+                    setShowWelcome(true);
+                    setScreen("lobby");
+                  } catch(e) { setErr("Error creando perfil. Contacta con soporte."); }
+                }
+              }
+            }
+          } catch(e) { setErr("Error al verificar email. Inténtalo de nuevo."); }
+        })();
       }
     }
     // Referral code
@@ -2545,22 +2598,16 @@ function App() {
               </div>
               {bonusAvailable ? (
                 <button className="ghost-btn" style={{background:"rgba(74,222,128,.12)",borderColor:"rgba(74,222,128,.35)",color:"#4ade80",fontWeight:700,animation:"pulse-gold 1.5s ease-in-out infinite"}} onClick={claimDailyBonus}>
-                  🎁 +{bonusAmount} BONUS
+                  🎁 +{bonusAmount}
                 </button>
               ) : bonusNextTime ? (
-                <div className="token-pill" style={{color:"rgba(255,255,255,.3)",fontSize:".72rem",fontFamily:"'Orbitron',sans-serif"}}>
+                <div className="token-pill" style={{color:"rgba(255,255,255,.3)",fontSize:".68rem",fontFamily:"'Orbitron',sans-serif"}}>
                   🎁 {bonusNextTime}
                 </div>
               ) : null}
               <button className="ghost-btn" style={{position:"relative"}} onClick={() => setShowNotif(v => !v)}>
                 🔔{unreadNotif && <span className="notif-dot"></span>}
               </button>
-              <button className="ghost-btn" style={{
-                animation: (user?.tokens === 2500 || user?.tokens === 3500) ? "pulse-gold 2s ease-in-out 6" : "none",
-                borderColor: (user?.tokens === 2500 || user?.tokens === 3500) ? "rgba(251,191,36,.5)" : undefined
-              }} onClick={() => setShowTutorial(true)}>❓ Cómo funciona</button>
-              <button className="ghost-btn" onClick={loadProfile}>👤 Perfil</button>
-              <button className="ghost-btn" onClick={doLogout}>Salir</button>
               <button className="hamburger" onClick={() => setShowHam(true)}>☰</button>
             </div>
           </div>
@@ -2581,6 +2628,10 @@ function App() {
                 </div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); if(!refCode) loadProfile(); setScreen("referrals"); }}>👥 <span>Invitar amigos</span></div>
                 <div className="ham-btn" onClick={() => { setShowHam(false); loadBadges(); }}>🎖️ <span>Logros</span></div>
+                <div style={{borderTop:"1px solid rgba(255,255,255,.06)",margin:"8px 0"}}></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); setShowTutorial(true); }}>❓ <span>Cómo funciona</span></div>
+                <div className="ham-btn" onClick={() => { setShowHam(false); loadProfile(); }}>👤 <span>Mi perfil</span></div>
+                <div className="ham-btn" style={{color:"rgba(239,68,68,.7)"}} onClick={() => { setShowHam(false); doLogout(); }}>🚪 <span>Cerrar sesión</span></div>
                 <div className="ham-close" onClick={() => setShowHam(false)}>✕ CERRAR</div>
               </div>
             </>
@@ -3108,22 +3159,37 @@ function App() {
           <div className="history-list">
             {history.length === 0 ? (
               <div className="empty-hist">Aún no has jugado ninguna partida</div>
-            ) : (histExpanded ? history : history.slice(0, 5)).map(h => (
-              <div key={h.id} className="history-row">
-                <div>
-                  <div className="history-q">{h.question_a} vs {h.question_b}</div>
-                  <div className="history-room" style={{color: roomColor(h.room_id)}}>{roomName(h.room_id)}</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div className={`history-delta ${h.delta > 0 ? "p" : h.delta < 0 ? "n" : "z"}`}>
-                    {h.delta > 0 ? "+" : ""}{h.delta?.toLocaleString()} {COIN}
+            ) : (histExpanded ? history : history.slice(0, 5)).map((h, i) => {
+              const ROOMS_MAP = {starter:"🌱 Starter",medium:"⚡ Medium",prime:"👑 Prime",vip:"💎 VIP",elite:"💠 Elite"};
+              const ROOM_COLORS = {starter:"#4ade80",medium:"#60a5fa",prime:"#c084fc",vip:"#fbbf24",elite:"#f97316"};
+              const total = (h.votes_a||0) + (h.votes_b||0);
+              const pA = total ? Math.round(((h.votes_a||0)/total)*100) : 50;
+              const myOption = h.vote === "a" ? h.question_a : h.vote === "b" ? h.question_b : "—";
+              const minorityOption = h.minority === "a" ? h.question_a : h.minority === "b" ? h.question_b : "—";
+              const date = h.created_at ? new Date(h.created_at).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+              return (
+                <div key={i} className="history-row" style={{flexDirection:"column",gap:6,alignItems:"stretch"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:"1rem"}}>{h.result==="win"?"✅":h.result==="lose"?"❌":h.result==="tie"?"🤝":"⏭"}</span>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:".82rem",color:"#fff"}}>{h.question_a||"?"} <span style={{color:"rgba(255,255,255,.3)"}}>vs</span> {h.question_b||"?"}</div>
+                        <div style={{fontSize:".7rem",color:ROOM_COLORS[h.room_id]||"rgba(255,255,255,.3)",marginTop:1}}>{ROOMS_MAP[h.room_id]||h.room_id} · {date}</div>
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div className={`history-delta ${h.delta>0?"p":h.delta<0?"n":"z"}`}>{h.delta>0?"+":""}{(h.delta||0).toLocaleString()} 🪙</div>
+                      {h.tokens_after != null && <div style={{fontSize:".68rem",color:"rgba(255,255,255,.2)",marginTop:2}}>Saldo: {h.tokens_after.toLocaleString()}</div>}
+                    </div>
                   </div>
-                  <div style={{fontSize:".72rem",color:"rgba(255,255,255,.25)",marginTop:3}}>
-                    {h.result === "win" ? "✅ Victoria" : h.result === "lose" ? "❌ Derrota" : h.result === "tie" ? "🤝 Empate" : "⏭ Sin voto"}
-                  </div>
+                  {h.question_a && total > 0 && (
+                    <div style={{fontSize:".7rem",color:"rgba(255,255,255,.3)"}}>
+                      Tú: <strong style={{color:"rgba(255,255,255,.5)"}}>{myOption}</strong> · Minoría: <strong style={{color:"#fbbf24"}}>{minorityOption}</strong> · Votos: {h.votes_a||0}A / {h.votes_b||0}B
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {history.length > 5 && (
             <button className="hist-expand-btn" onClick={() => setHistExpanded(e => !e)}>
