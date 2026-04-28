@@ -1261,21 +1261,23 @@ function App() {
     const today = new Date().toISOString().split("T")[0];
     setDailyVote(option);
     setDailyVoted(true);
+    const reward = dailyQ.reward || 100;
+    // Give tokens immediately so user sees animation
+    await saveTok(tokRef.current + reward);
     // Register vote
     try { await dbInsertRaw("round_votes", { round_id: `daily_${dailyQ.id}_${option}`, user_id: userIdRef.current, vote: option }, tokenRef.current); } catch(e) {}
-    // Give tokens
-    const reward = dailyQ.reward || 100;
-    await saveTok(tokRef.current + reward);
     // Mark as voted today
     await dbUpdate("profiles", `id=eq.${userIdRef.current}`, { daily_q_date: today }, tokenRef.current);
     // Load fresh vote counts
-    const [va, vb] = await Promise.all([
-      dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_a&select=user_id`, KEY),
-      dbGet("round_votes", `round_id=eq.daily_${dailyQ.id}_b&select=user_id`, KEY),
+    const tok = tokenRef.current || KEY;
+    const [ra, rb] = await Promise.all([
+      fetch(`${SB}/rest/v1/round_votes?round_id=eq.daily_${dailyQ.id}_a&select=user_id`, {headers:{apikey:KEY,Authorization:`Bearer ${tok}`}}).then(r=>r.json()),
+      fetch(`${SB}/rest/v1/round_votes?round_id=eq.daily_${dailyQ.id}_b&select=user_id`, {headers:{apikey:KEY,Authorization:`Bearer ${tok}`}}).then(r=>r.json()),
     ]);
-    setDailyResult({ cA: Array.isArray(va)?va.length:0, cB: Array.isArray(vb)?vb.length:0, reward });
+    setDailyResult({ cA: Array.isArray(ra)?ra.length:0, cB: Array.isArray(rb)?rb.length:0, reward });
+    // Show double modal after results are loaded
     setDailyDoubleAvail(true);
-    setTimeout(() => setShowDailyDouble(true), 600); // small delay so tokens animate first
+    setTimeout(() => setShowDailyDouble(true), 400);
   }
 
   function watchDailyDoubleAd() {
@@ -2809,8 +2811,14 @@ function App() {
                 </div>
               ) : dailyResult ? (
                 <div>
-                  <div style={{fontSize:".78rem",color:"rgba(255,255,255,.35)",textAlign:"center",marginBottom:10}}>
-                    Tu elección: <strong style={{color:"#fbbf24"}}>{dailyVote === "a" ? dailyQ.question_a : dailyQ.question_b}</strong>
+                  {/* Tokens received */}
+                  <div style={{textAlign:"center",marginBottom:14}}>
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:"1.1rem",fontWeight:900,color:"#4ade80",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                      ✅ +{dailyResult.reward||100} <img src="/coin.png" style={{width:22,height:22}} alt="tokens" /> recibidos
+                    </div>
+                    <div style={{fontSize:".75rem",color:"rgba(255,255,255,.3)",marginTop:4}}>
+                      Tu elección: <strong style={{color:"#fbbf24"}}>{dailyVote === "a" ? dailyQ.question_a : dailyQ.question_b}</strong>
+                    </div>
                   </div>
                   {/* Vote bars */}
                   {(() => {
@@ -2819,23 +2827,26 @@ function App() {
                     const pB = 100 - pA;
                     return (
                       <div style={{maxWidth:500,margin:"0 auto"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"rgba(255,255,255,.5)",marginBottom:4}}>
-                          <span style={{color:"#4ade80"}}>{dailyQ.question_a}</span>
-                          <span style={{color:"#60a5fa"}}>{dailyQ.question_b}</span>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",marginBottom:6}}>
+                          <span style={{color:"#4ade80",fontWeight:700}}>{dailyQ.question_a}</span>
+                          <span style={{color:"#60a5fa",fontWeight:700}}>{dailyQ.question_b}</span>
                         </div>
-                        <div style={{height:14,borderRadius:100,background:"rgba(255,255,255,.06)",overflow:"hidden",display:"flex"}}>
-                          <div style={{width:`${pA}%`,background:"linear-gradient(90deg,#4ade80,#22c55e)",transition:"width .6s ease",borderRadius:"100px 0 0 100px"}}></div>
+                        <div style={{height:16,borderRadius:100,background:"rgba(255,255,255,.06)",overflow:"hidden",display:"flex"}}>
+                          <div style={{width:`${pA}%`,background:"linear-gradient(90deg,#4ade80,#22c55e)",transition:"width .8s ease",borderRadius:"100px 0 0 100px",minWidth:pA>0?4:0}}></div>
                           <div style={{flex:1,background:"linear-gradient(90deg,#3b82f6,#60a5fa)",borderRadius:"0 100px 100px 0"}}></div>
                         </div>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",fontFamily:"'Orbitron',sans-serif",fontWeight:700,marginTop:6}}>
-                          <span style={{color:"#4ade80"}}>{pA}% ({dailyResult.cA})</span>
-                          <span style={{color:"#60a5fa"}}>{pB}% ({dailyResult.cB})</span>
+                        <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'Orbitron',sans-serif",fontSize:".82rem",fontWeight:700,marginTop:8}}>
+                          <span style={{color:"#4ade80"}}>{pA}% <span style={{fontSize:".68rem",color:"rgba(255,255,255,.3)"}}>({dailyResult.cA})</span></span>
+                          <span style={{fontSize:".68rem",color:"rgba(255,255,255,.2)",fontFamily:"inherit"}}>{total} {total===1?"voto":"votos"}</span>
+                          <span style={{color:"#60a5fa"}}><span style={{fontSize:".68rem",color:"rgba(255,255,255,.3)"}}>({dailyResult.cB})</span> {pB}%</span>
                         </div>
-                        <div style={{textAlign:"center",fontSize:".72rem",color:"rgba(255,255,255,.2)",marginTop:6}}>{total} {total===1?"persona":"personas"} han respondido hoy</div>
                       </div>
                     );
                   })()}
-                  <div style={{textAlign:"center",marginTop:10,fontSize:".78rem",color:"#4ade80",fontFamily:"'Orbitron',sans-serif"}}>✅ +{dailyResult.reward||100} tokens recibidos</div>
+                </div>
+              ) : dailyVoted ? (
+                <div style={{textAlign:"center",padding:"12px"}}>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:".75rem",color:"rgba(255,255,255,.3)",letterSpacing:".1em"}}>Cargando resultados...</div>
                 </div>
               ) : (
                 <div style={{textAlign:"center",fontSize:".82rem",color:"rgba(255,255,255,.3)"}}>✅ Ya respondiste hoy — vuelve mañana</div>
@@ -2850,7 +2861,7 @@ function App() {
                 <button onClick={() => setShowDailyDouble(false)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"rgba(255,255,255,.3)",fontSize:"1.2rem",cursor:"pointer",lineHeight:1}}>✕</button>
                 <div className="modal-icon">🎁</div>
                 <div className="modal-title">¡+{dailyResult?.reward||100} 🪙 CONSEGUIDOS!</div>
-                <div className="modal-text" style={{marginBottom:16}}>¿Quieres doblar tu recompensa? Ve un anuncio corto y consigue {dailyResult?.reward||100} tokens extra.</div>
+                <div className="modal-text" style={{marginBottom:16}}>¿Quieres doblar tu recompensa? Ve un anuncio corto y consigue <strong style={{color:"#4ade80"}}>{dailyResult?.reward||100} tokens extra</strong>.</div>
                 {!dailyDoubleAdPlaying ? (
                   <button className="btn-gold" onClick={watchDailyDoubleAd}>
                     📺 Ver anuncio → +{dailyResult?.reward||100} 🪙 extra
